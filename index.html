@@ -772,6 +772,9 @@
             <button id="qrShareBtn" class="btn btn-filled" style="display:none; gap:8px; align-items:center;" onclick="hostOfflineQR()">
                 <span class="material-icons-round">qr_code_2</span> Share Offline (QR)
             </button>
+            <button id="onlineLinkBtn" class="btn btn-filled" style="display:none; gap:8px; align-items:center; margin-top:4px;" onclick="hostOnlineLink()">
+                <span class="material-icons-round">link</span> Share Online Link
+            </button>
         </div>
 
         <div class="discovery-section">
@@ -816,6 +819,25 @@
         </div>
     </div>
 
+    <!-- Overlay: Online Link -->
+    <div class="overlay" id="onlineLinkOverlay">
+        <div class="modal">
+            <div class="modal-title">Online Relay Link</div>
+            <div class="modal-content" style="display:flex; flex-direction:column; align-items:center; gap:16px;">
+                <div class="share-link-container" style="width:100%; box-sizing:border-box;">
+                    <div class="share-link-text" id="onlineLinkText" style="flex:1;">Generating...</div>
+                    <button class="btn btn-text no-shade" onclick="copyOnlineLink()" title="Copy Link" style="padding:0; min-width:auto;">
+                        <span class="material-icons-round" style="font-size:20px;">content_copy</span>
+                    </button>
+                </div>
+                <div id="onlineLinkStatus" style="font-size:12px; opacity:0.7; text-align:center;">Waiting for receiver to open the link...</div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-text no-shade" onclick="cancelOnlineLink()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Overlay: QR Display -->
     <div class="overlay" id="qrDisplayOverlay">
         <div class="modal">
@@ -826,7 +848,7 @@
             </div>
             <div class="modal-actions">
                 <button class="btn btn-text no-shade" onclick="closeQRDisplay()">Cancel</button>
-                <button class="btn btn-filled" id="scanAnswerBtn" onclick="scanOfflineQR()" style="display:none;">Scan Answer</button>
+                <button class="btn btn-filled" id="scanAnswerBtn" onclick="closeQRDisplay(); scanOfflineQR();" style="display:none;">Scan Answer</button>
             </div>
         </div>
     </div>
@@ -1588,6 +1610,7 @@
 
                     chip.style.display = 'flex';
                     document.getElementById('qrShareBtn').style.display = 'flex';
+                    document.getElementById('onlineLinkBtn').style.display = 'flex';
                 }
             };
 
@@ -1614,6 +1637,7 @@
             folderInput.value = '';
             document.getElementById('selectedFileChip').style.display = 'none';
             document.getElementById('qrShareBtn').style.display = 'none';
+            document.getElementById('onlineLinkBtn').style.display = 'none';
             // No longer forcing colors here to keep it consistent with CSS
             selectFileFab.style.backgroundColor = '';
             selectFileFab.style.color = '';
@@ -1784,6 +1808,24 @@
         function respondToRequest(accepted) {
             incomingOverlay.style.display = 'none';
             if (!accepted) document.body.classList.remove('modal-open');
+            
+            if (onlineRelaySession) {
+                // VERCEL RELAY RESPONSE
+                fetch(`${DISCOVERY_ENDPOINT.replace('discovery', 'relay')}?session=${onlineRelaySession}&action=accept&accept=${accepted}`, { method: 'POST' }).catch(()=>{});
+                if (accepted) {
+                    transferOverlay.style.display = 'flex';
+                    document.body.classList.add('modal-open');
+                    transferStatus.innerText = t('receiving');
+                    document.getElementById('transferTitle').innerText = t('ready_to_receive');
+                    document.getElementById('transferActions').style.display = 'none';
+                    progressBar().style.width = '0%';
+                    receiveVercelRelay(onlineRelaySession);
+                } else {
+                    onlineRelaySession = null;
+                }
+                return;
+            }
+
             if (!currentConnection) return;
 
             if (accepted) {
@@ -2121,7 +2163,36 @@
         function checkUrlForPeer() {
             const params = new URLSearchParams(window.location.search);
             const senderId = params.get('p');
-            if (senderId) {
+            const relaySession = params.get('relay');
+
+            if (relaySession) {
+                // VERCEL ONLINE RELAY MODE
+                fetch(`${DISCOVERY_ENDPOINT.replace('discovery', 'relay')}?session=${relaySession}&action=meta`).then(res => res.json()).then(data => {
+                    if (!data.meta) { alert(t('error_link')); return; }
+                    
+                    pendingTransfer = data.meta;
+                    onlineRelaySession = relaySession;
+                    
+                    let filesHtml = '';
+                    if (data.meta.files.length === 1) {
+                        filesHtml = `<strong>${data.meta.files[0].name}</strong> (${formatBytes(data.meta.files[0].size)})`;
+                    } else {
+                        filesHtml = `<strong>${data.meta.files.length} items</strong> (${formatBytes(data.meta.files.reduce((a, b) => a + b.size, 0))})`;
+                    }
+
+                    document.getElementById('incomingContent').innerHTML = `
+                        <div style="display:flex; flex-direction:column; align-items:center; gap:16px;">
+                            <span class="material-icons-round" style="font-size:48px; color:var(--md-sys-color-primary);">cloud_download</span>
+                            <div style="text-align:center;">
+                                <strong>${data.meta.senderName}</strong> ${t('wants_to_send')} via Online Link<br>
+                                ${filesHtml}
+                            </div>
+                        </div>
+                    `;
+                    incomingOverlay.style.display = 'flex';
+                }).catch(() => { alert(t('error_link')); });
+
+            } else if (senderId) {
                 const checkReady = setInterval(() => {
                     if (myId) {
                         clearInterval(checkReady);
@@ -2136,6 +2207,208 @@
                     }
                 }, 500);
             }
+        }
+
+        // --- VERCEL ONLINE RELAY TRANSFER LOGIC ---
+        let onlineRelaySession = null;
+        let onlineRelayInterval = null;
+        const RELAY_ENDPOINT = '/api/relay';
+
+        async function hostOnlineLink() {
+            if (selectedFiles.length === 0) return;
+            const sessionId = 'relay_' + Math.random().toString(36).substring(2, 10);
+            onlineRelaySession = sessionId;
+            
+            document.getElementById('onlineLinkOverlay').style.display = 'flex';
+            document.getElementById('onlineLinkText').innerText = 'Generating...';
+            document.getElementById('onlineLinkStatus').innerText = 'Initializing Serverless Relay...';
+
+            const meta = {
+                files: selectedFiles.map(f => ({ name: f.name, size: f.size, type: f.type })),
+                senderName: myName
+            };
+
+            try {
+                const res = await fetch(`${RELAY_ENDPOINT}?session=${sessionId}&action=init`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(meta)
+                });
+                if (!res.ok) throw new Error('Init failed');
+
+                const link = `${window.location.origin}${window.location.pathname}?relay=${sessionId}`;
+                document.getElementById('onlineLinkText').innerText = link;
+                document.getElementById('onlineLinkStatus').innerText = 'Link ready! Waiting for receiver to open it...';
+
+                // Poll for receiver acceptance
+                onlineRelayInterval = setInterval(async () => {
+                    try {
+                        const statusRes = await fetch(`${RELAY_ENDPOINT}?session=${sessionId}&action=meta`);
+                        if (statusRes.ok) {
+                            const data = await statusRes.json();
+                            if (data.state === 'accepted') {
+                                clearInterval(onlineRelayInterval);
+                                document.getElementById('onlineLinkOverlay').style.display = 'none';
+                                
+                                transferOverlay.style.display = 'flex';
+                                document.body.classList.add('modal-open');
+                                transferStatus.innerText = t('sending');
+                                document.getElementById('transferTitle').innerText = t('sending');
+                                document.getElementById('transferActions').style.display = 'none';
+                                progressBar().style.width = '0%';
+                                beginVercelRelaySend(sessionId);
+                            } else if (data.state === 'rejected') {
+                                clearInterval(onlineRelayInterval);
+                                alert(t('decline'));
+                                document.getElementById('onlineLinkOverlay').style.display = 'none';
+                            }
+                        }
+                    } catch(e) {}
+                }, 2000);
+
+            } catch (err) {
+                document.getElementById('onlineLinkStatus').innerText = 'Error: ' + err.message;
+            }
+        }
+
+        function copyOnlineLink() {
+            const txt = document.getElementById('onlineLinkText').innerText;
+            if (txt && !txt.includes('Generat')) {
+                navigator.clipboard.writeText(txt);
+                alert(t('link_copied'));
+            }
+        }
+
+        function cancelOnlineLink() {
+            if (onlineRelayInterval) clearInterval(onlineRelayInterval);
+            if (onlineRelaySession) {
+                fetch(`${RELAY_ENDPOINT}?session=${onlineRelaySession}&action=cancel`, { method: 'POST' }).catch(()=>{});
+            }
+            document.getElementById('onlineLinkOverlay').style.display = 'none';
+            onlineRelaySession = null;
+        }
+
+        async function beginVercelRelaySend(sessionId) {
+            const CHUNK_SIZE = 1000 * 1024; // 1MB max for Vercel
+            const startTime = Date.now();
+            const totalSize = selectedFiles.reduce((sum, f) => sum + f.size, 0);
+            let totalUploaded = 0;
+            let globalChunkIndex = 0;
+
+            for (let i = 0; i < selectedFiles.length; i++) {
+                const file = selectedFiles[i];
+                let offset = 0;
+
+                document.getElementById('transferTitle').innerText = `${t('sending')} (${i + 1}/${selectedFiles.length})`;
+                document.getElementById('transferStatus').innerText = file.name;
+
+                while (offset < file.size) {
+                    const slice = file.slice(offset, offset + CHUNK_SIZE);
+                    const chunkData = await slice.arrayBuffer();
+
+                    // 1. Upload chunk
+                    let uploaded = false;
+                    while (!uploaded) {
+                        try {
+                            const res = await fetch(`${RELAY_ENDPOINT}?session=${sessionId}&action=chunk&index=${globalChunkIndex}`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/octet-stream' },
+                                body: chunkData
+                            });
+                            if (res.ok) uploaded = true;
+                            else await new Promise(r => setTimeout(r, 1000));
+                        } catch(e) { await new Promise(r => setTimeout(r, 1000)); }
+                    }
+
+                    // 2. Poll until receiver ACKs this exact chunk
+                    let acked = false;
+                    while (!acked) {
+                        try {
+                            const metaRes = await fetch(`${RELAY_ENDPOINT}?session=${sessionId}&action=meta`);
+                            if (metaRes.ok) {
+                                const mData = await metaRes.json();
+                                if (mData.ackChunk === globalChunkIndex) acked = true;
+                                else await new Promise(r => setTimeout(r, 1000));
+                            } else throw new Error();
+                        } catch(e) { await new Promise(r => setTimeout(r, 1000)); }
+                    }
+
+                    offset += chunkData.byteLength;
+                    totalUploaded += chunkData.byteLength;
+                    globalChunkIndex++;
+                    updateProgress(Math.min(99, (totalUploaded / totalSize) * 100), totalUploaded, startTime);
+                }
+            }
+
+            transferStatus.innerText = t('sent_success');
+            playAirdropAnimation();
+            fetch(`${RELAY_ENDPOINT}?session=${sessionId}&action=ack&status=complete`, { method: 'POST' }).catch(()=>{});
+            
+            setTimeout(() => {
+                transferOverlay.style.display = 'none';
+                document.body.classList.remove('modal-open');
+                clearSelection();
+            }, 1000);
+        }
+
+        async function receiveVercelRelay(sessionId) {
+            const totalSize = pendingTransfer.files.reduce((a, b) => a + b.size, 0);
+            let totalReceived = 0;
+            let globalChunkIndex = 0;
+            const startTime = Date.now();
+
+            for (let i = 0; i < pendingTransfer.files.length; i++) {
+                const fileMeta = pendingTransfer.files[i];
+                let fileReceived = 0;
+                const fileChunks = [];
+
+                document.getElementById('transferTitle').innerText = `${t('receiving')} (${i + 1}/${pendingTransfer.files.length})`;
+                document.getElementById('transferStatus').innerText = fileMeta.name;
+
+                while (fileReceived < fileMeta.size) {
+                    let chunkDownloaded = false;
+                    while (!chunkDownloaded) {
+                        try {
+                            const res = await fetch(`${RELAY_ENDPOINT}?session=${sessionId}&action=chunk&index=${globalChunkIndex}`);
+                            if (res.status === 200) {
+                                const buffer = await res.arrayBuffer();
+                                fileChunks.push(buffer);
+                                fileReceived += buffer.byteLength;
+                                totalReceived += buffer.byteLength;
+                                
+                                // ACK chunk so sender pushes next into memory
+                                await fetch(`${RELAY_ENDPOINT}?session=${sessionId}&action=ack&index=${globalChunkIndex}`, { method: 'POST' });
+                                
+                                globalChunkIndex++;
+                                chunkDownloaded = true;
+                                updateProgress(Math.min(99, (totalReceived / totalSize) * 100), totalReceived, startTime);
+                            } else if (res.status === 202) {
+                                await new Promise(r => setTimeout(r, 1000)); // pending chunk
+                            } else throw new Error();
+                        } catch(e) { await new Promise(r => setTimeout(r, 1000)); }
+                    }
+                }
+
+                // File fully received, download it
+                const blob = new Blob(fileChunks);
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileMeta.name;
+                a.click();
+                setTimeout(() => URL.revokeObjectURL(url), 5000);
+            }
+
+            transferStatus.innerText = t('received_success');
+            playAirdropAnimation();
+            fetch(`${RELAY_ENDPOINT}?session=${sessionId}&action=ack&status=complete`, { method: 'POST' }).catch(()=>{});
+            
+            setTimeout(() => {
+                transferOverlay.style.display = 'none';
+                document.body.classList.remove('modal-open');
+                onlineRelaySession = null;
+                pendingTransfer = null;
+            }, 1000);
         }
 
         // --- OFFLINE QR TRANSFER LOGIC ---
