@@ -759,10 +759,6 @@
                         onclick="editName()">edit</span>
                 </div>
                 <div class="device-id" id="myId">---</div>
-                <div class="share-link-container" style="margin-top: 12px; display:inline-flex; cursor:pointer;" onclick="copyMyLink()">
-                    <span class="material-icons-round" style="font-size:16px;">content_copy</span>
-                    <span class="share-link-text">Copy Link</span>
-                </div>
             </div>
         </div>
 
@@ -827,6 +823,11 @@
             <div class="modal-content" style="display:flex; flex-direction:column; align-items:center; gap:16px;">
                 <div id="qrcodeDisplay" style="padding:16px; background:white; border-radius:8px;"></div>
                 <div id="qrDisplayStatus" style="font-size:12px; opacity:0.7; text-align:center;">Ask the receiver to tap the Scanner icon and scan this code.</div>
+                
+                <!-- URL Shared Button -->
+                <button class="btn btn-text no-shade" id="copyOfflineLinkBtn" onclick="copyOfflineLink()" style="margin-top:-8px;">
+                    <span class="material-icons-round" style="font-size:16px; margin-right:4px;">link</span> Copy as Link
+                </button>
             </div>
             <div class="modal-actions">
                 <button class="btn btn-text no-shade" onclick="closeQRDisplay()">Cancel</button>
@@ -1139,15 +1140,14 @@
         let otherHasPressedStart = false;
         let receiveStartTime = null;
 
-        // PREVENT MULTIPLE INSTANCES
+        // ROUTE OFFLINE URLS ACROSS TABS
         const instanceChannel = new BroadcastChannel('baidrop_instance');
-        instanceChannel.postMessage('new_instance_check');
+
         instanceChannel.onmessage = (e) => {
-            if (e.data === 'new_instance_check') {
-                instanceChannel.postMessage('already_exists');
-            } else if (e.data === 'already_exists') {
-                document.body.innerHTML = '<div style="display:flex; height:100vh; width:100vw; align-items:center; justify-content:center; text-align:center; padding:20px; font-family:var(--font-main); color:var(--md-sys-color-error);"><h2>Bái Drop is already open in another tab.</h2></div>';
-                throw new Error("Duplicate instance");
+            if (e.data && e.data.type === 'route_offline_answer') {
+                if (offlinePeerConnection && offlinePeerConnection.signalingState === 'have-local-offer') {
+                    handleOfflineQRScanned('BD_ANSWER:' + e.data.payload);
+                }
             }
         };
 
@@ -2128,7 +2128,22 @@
         function checkUrlForPeer() {
             const params = new URLSearchParams(window.location.search);
             const senderId = params.get('p');
-            if (senderId) {
+            const offlineOffer = params.get('offer');
+            const offlineAnswer = params.get('answer');
+
+            if (offlineAnswer) {
+                document.body.innerHTML = '<div style="display:flex; flex-direction:column; height:100vh; width:100vw; align-items:center; justify-content:center; text-align:center; padding:20px; font-family:var(--font-main);"><h2 style="color:var(--md-sys-color-primary);">Routing connection back to your original tab...</h2><p style="margin-top:8px;">You can close this window.</p></div>';
+                instanceChannel.postMessage({ type: 'route_offline_answer', payload: offlineAnswer });
+                setTimeout(() => { window.close(); }, 3000);
+                return;
+            }
+
+            if (offlineOffer) {
+                // Instantly inject the offer!
+                setTimeout(() => {
+                    handleOfflineQRScanned('BD_OFFER:' + offlineOffer);
+                }, 500); // Wait a half second for DOM to be fully painted
+            } else if (senderId) {
                 const checkReady = setInterval(() => {
                     if (myId) {
                         clearInterval(checkReady);
@@ -2145,16 +2160,20 @@
             }
         }
 
-        function copyMyLink() {
-            const url = window.location.origin + window.location.pathname + '?p=' + myId;
+        // --- OFFLINE QR TRANSFER LOGIC ---
+        let currentOfflineString = '';
+
+        function copyOfflineLink() {
+            if (!currentOfflineString) return;
+            const param = currentOfflineString.startsWith('BD_OFFER:') ? 'offer=' : 'answer=';
+            const val = currentOfflineString.split(':')[1];
+            const url = window.location.origin + window.location.pathname + '?' + param + encodeURIComponent(val);
             navigator.clipboard.writeText(url).then(() => {
-                alert(t('link_copied'));
+                alert('Offline Link Copied! Send it to the other device.');
             }).catch(err => {
                 alert("Failed to copy link: " + err);
             });
         }
-
-        // --- OFFLINE QR TRANSFER LOGIC ---
         class OfflineDataConnection {
             constructor(channel, peerId) {
                 this.peer = peerId;
@@ -2259,10 +2278,11 @@
 
             const offerData = JSON.stringify(offlinePeerConnection.localDescription);
             const compressedOffer = await compressString(offerData);
+            currentOfflineString = 'BD_OFFER:' + compressedOffer;
 
             document.getElementById('qrcodeDisplay').innerHTML = '';
             new QRCode(document.getElementById('qrcodeDisplay'), {
-                text: 'BD_OFFER:' + compressedOffer,
+                text: currentOfflineString,
                 width: 256,
                 height: 256,
                 correctLevel: QRCode.CorrectLevel.L
@@ -2339,18 +2359,19 @@
                     await new Promise(r => setTimeout(r, 600)); // Gather local ICE
 
                     const answerData = JSON.stringify(offlinePeerConnection.localDescription);
-                    const compressedAnswer = await compressString(answerData);
+            const compressedAnswer = await compressString(answerData);
+            currentOfflineString = 'BD_ANSWER:' + compressedAnswer;
 
-                    // Show Answer QR for Sender to scan
-                    document.getElementById('qrDisplayOverlay').style.display = 'flex';
-                    document.getElementById('qrDisplayTitle').innerText = 'Answer Generated';
-                    document.getElementById('qrcodeDisplay').innerHTML = '';
-                    new QRCode(document.getElementById('qrcodeDisplay'), {
-                        text: 'BD_ANSWER:' + compressedAnswer,
-                        width: 256,
-                        height: 256,
-                        correctLevel: QRCode.CorrectLevel.L
-                    });
+            // Show Answer QR for Sender to scan
+            document.getElementById('qrDisplayOverlay').style.display = 'flex';
+            document.getElementById('qrDisplayTitle').innerText = 'Answer Generated';
+            document.getElementById('qrcodeDisplay').innerHTML = '';
+            new QRCode(document.getElementById('qrcodeDisplay'), {
+                text: currentOfflineString,
+                width: 256,
+                height: 256,
+                correctLevel: QRCode.CorrectLevel.L
+            });
                     document.getElementById('qrDisplayStatus').innerText = 'Ask the Host to scan this connection Answer.';
                     document.getElementById('scanAnswerBtn').style.display = 'none';
 
