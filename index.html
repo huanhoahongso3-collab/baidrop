@@ -2309,18 +2309,21 @@
                         await handleOfflineQRScanned(decodedText);
                     },
                     (err) => { /* ignore standard read failures */ }
-                ).catch(err => {
-                    // If preferred environment strictly fails, fallback to user (for laptops)
-                    if (facingModeOpt.facingMode && facingModeOpt.facingMode.exact) {
-                        qrScannerInstance.stop().catch(()=>{});
+                ).then(() => {
+                    document.getElementById('qrScannerStatus').innerText = 'Scanner active.';
+                }).catch(err => {
+                    // If preferred environment fails (like on PCs), fallback to user (webcam)
+                    if (facingModeOpt.facingMode === "environment") {
+                        try { qrScannerInstance.clear(); } catch(e){} // Attempt safe cleanup
+                        qrScannerInstance = new Html5Qrcode("qrReader"); // Re-instantiate to avoid corrupted internal state
                         startScanner({ facingMode: "user" });
                     } else {
-                        document.getElementById('qrScannerStatus').innerText = 'Camera access denied or failed.';
+                        document.getElementById('qrScannerStatus').innerText = 'Camera fail: ' + (err.message || err);
                     }
                 });
             };
 
-            startScanner({ facingMode: { exact: "environment" } });
+            startScanner({ facingMode: "environment" });
         }
 
         function closeQRScanner() {
@@ -2350,6 +2353,10 @@
 
                     currentConnection = customConn;
                     transferRole = 'receiver';
+                    customConn.on('open', () => {
+                        closeQRDisplay();
+                        closeQRScanner();
+                    });
                     customConn.on('data', (data) => handleConnectionData(customConn, data));
 
                     await offlinePeerConnection.setRemoteDescription(offerDesc);
