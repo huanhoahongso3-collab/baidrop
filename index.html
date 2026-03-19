@@ -2328,7 +2328,7 @@
         }
 
         async function beginVercelRelaySend(sessionId) {
-            const CHUNK_SIZE = 1000 * 1024; // 1MB max for Vercel
+            const CHUNK_SIZE = 500 * 1024; // 500KB max for Vercel ensuring stable HTTP boundaries
             const startTime = Date.now();
             const totalSize = selectedFiles.reduce((sum, f) => sum + f.size, 0);
             let totalUploaded = 0;
@@ -2530,6 +2530,16 @@
             if (_currentOfflineURL) copyToClipboardRobust(_currentOfflineURL);
         }
 
+        function minifySDP(sdp) {
+            return sdp.split('\r\n').filter(line => {
+                if (!line) return false;
+                if (line.startsWith('a=extmap')) return false;
+                if (line.startsWith('a=rtcp')) return false;
+                if (line.startsWith('a=msid')) return false;
+                return true;
+            }).join('\n');
+        }
+
         async function hostOfflineQR() {
             if (selectedFiles.length === 0) return;
 
@@ -2558,8 +2568,8 @@
             // Wait a brief moment for local ICE candidate to be collected (LAN IPs) since STUN is empty
             await new Promise(r => setTimeout(r, 600));
 
-            const offerData = JSON.stringify(offlinePeerConnection.localDescription);
-            const compressedOffer = await compressString(offerData);
+            const cleanSDP = minifySDP(offlinePeerConnection.localDescription.sdp);
+            const compressedOffer = await compressString(cleanSDP);
 
             document.getElementById('qrcodeDisplay').innerHTML = '';
             new QRCode(document.getElementById('qrcodeDisplay'), {
@@ -2626,7 +2636,7 @@
                     
                     const compressedSDP = text.replace('BD_OFFER:', '');
                     const sdpString = await decompressString(compressedSDP);
-                    const offerDesc = JSON.parse(sdpString);
+                    const offerDesc = { type: 'offer', sdp: sdpString };
 
                     offlinePeerConnection = new RTCPeerConnection({ iceServers: [] });
                     const dataChannel = offlinePeerConnection.createDataChannel('baidrop-offline-channel', { negotiated: true, id: 0 });
@@ -2642,8 +2652,8 @@
 
                     await new Promise(r => setTimeout(r, 600)); // Gather local ICE
 
-                    const answerData = JSON.stringify(offlinePeerConnection.localDescription);
-                    const compressedAnswer = await compressString(answerData);
+                    const cleanSDP = minifySDP(offlinePeerConnection.localDescription.sdp);
+                    const compressedAnswer = await compressString(cleanSDP);
 
                     // Show Answer QR for Sender to scan
                     document.getElementById('qrDisplayOverlay').style.display = 'flex';
@@ -2667,7 +2677,7 @@
                     closeQRScanner();
                     const compressedSDP = text.replace('BD_ANSWER:', '');
                     const sdpString = await decompressString(compressedSDP);
-                    const answerDesc = JSON.parse(sdpString);
+                    const answerDesc = { type: 'answer', sdp: sdpString };
 
                     await offlinePeerConnection.setRemoteDescription(answerDesc);
                     document.getElementById('qrDisplayOverlay').style.display = 'none';

@@ -82,11 +82,13 @@ export default async function handler(req, res) {
                 if (!session) return res.status(404).json({ error: 'Session not found' });
                 
                 session.lastActive = now;
-                const chunkIndex = parseInt(query.index, 10);
                 
-                // Receiver acks chunk, delete it immediately from memory to prevent Vercel OOM!
-                session.chunks.delete(chunkIndex);
-                session.ackChunk = chunkIndex;
+                if (query.index !== undefined) {
+                    const chunkIndex = parseInt(query.index, 10);
+                    // Receiver acks chunk, delete it immediately from memory to prevent Vercel OOM!
+                    session.chunks.delete(chunkIndex);
+                    session.ackChunk = chunkIndex;
+                }
                 
                 if (query.status === 'complete') {
                     session.state = 'complete';
