@@ -1,0 +1,2356 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bái Drop - Simple File Sharing</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&family=Google+Sans:wght@400;500;700&display=swap"
+        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml"
+        href='data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="%23f57c00"%3E%3Cpath d="M204-150q-57-55-90.5-129.5T80-440q0-83 31.5-156T197-723q54-54 127-85.5T480-840q83 0 156 31.5T763-723q54 54 85.5 127T880-440q0 86-33.5 161T756-150l-56-56q46-44 73-104.5T800-440q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 69 27 129t74 104l-57 57Zm113-113q-35-33-56-78.5T240-440q0-100 70-170t170-70q100 0 170 70t70 170q0 53-21 99t-56 78l-57-57q25-23 39.5-54t14.5-66q0-66-47-113t-113-47q-66 0-113 47t-47 113q0 36 14.5 66.5T374-320l-57 57Zm106.5-120.5Q400-407 400-440t23.5-56.5Q447-520 480-520t56.5 23.5Q560-473 560-440t-23.5 56.5Q513-360 480-360t-56.5-23.5Z"/%3E%3C/svg%3E'>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        :root {
+            --md-sys-color-primary: #f57c00;
+            --md-sys-color-on-primary: #ffffff;
+            --md-sys-color-primary-container: #ffdcbe;
+            --md-sys-color-on-primary-container: #2e1500;
+            --md-sys-color-secondary: #705b40;
+            --md-sys-color-on-secondary: #ffffff;
+            --md-sys-color-secondary-container: #fbdfbb;
+            --md-sys-color-on-secondary-container: #281805;
+            --md-sys-color-surface: #fdfcff;
+            --md-sys-color-on-surface: #1a1c1e;
+            --md-sys-color-surface-variant: #dfe2eb;
+            --md-sys-color-on-surface-variant: #43474e;
+            --md-sys-color-outline: #73777f;
+            --md-sys-color-outline-variant: #c3c7cf;
+            --md-sys-color-background: var(--md-sys-color-surface);
+            --md-sys-color-error: #BA1A1A;
+
+            --md-sys-elevation-1: 0 1px 3px 1px rgba(0, 0, 0, 0.15), 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+            --md-sys-elevation-3: 0 4px 8px 3px rgba(0, 0, 0, 0.15), 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+
+            --font-main: 'Google Sans', sans-serif;
+            --font-small: 'Space Grotesk', sans-serif;
+            --md-sys-typescale-h1-font: var(--font-main);
+            --md-sys-typescale-h1-weight: 700;
+            --md-sys-typescale-h1-size: 2.125rem;
+        }
+
+        [data-theme="dark"] {
+            --md-sys-color-primary: #ffb77c;
+            --md-sys-color-on-primary: #4d2700;
+            --md-sys-color-primary-container: #6d3b00;
+            --md-sys-color-on-primary-container: #ffdcbe;
+            --md-sys-color-secondary: #dec2a2;
+            --md-sys-color-on-secondary: #3e2e16;
+            --md-sys-color-secondary-container: #57442a;
+            --md-sys-color-on-secondary-container: #fbdfbb;
+            --md-sys-color-surface: #1a1c1e;
+            --md-sys-color-on-surface: #e2e2e6;
+            --md-sys-color-surface-variant: #43474e;
+            --md-sys-color-on-surface-variant: #c3c7cf;
+            --md-sys-color-outline: #8d9199;
+            --md-sys-color-outline-variant: #43474e;
+            --md-sys-color-background: var(--md-sys-color-surface);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]) {
+                --md-sys-color-primary: #ffb77c;
+                --md-sys-color-on-primary: #4d2700;
+                --md-sys-color-primary-container: #6d3b00;
+                --md-sys-color-on-primary-container: #ffdcbe;
+                --md-sys-color-secondary: #dec2a2;
+                --md-sys-color-on-secondary: #3e2e16;
+                --md-sys-color-secondary-container: #57442a;
+                --md-sys-color-on-secondary-container: #fbdfbb;
+                --md-sys-color-surface: #1a1c1e;
+                --md-sys-color-on-surface: #e2e2e6;
+                --md-sys-color-surface-variant: #43474e;
+                --md-sys-color-on-surface-variant: #c3c7cf;
+                --md-sys-color-outline: #8d9199;
+                --md-sys-color-outline-variant: #43474e;
+                --md-sys-color-background: var(--md-sys-color-surface);
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            margin: 0;
+            padding: 0;
+        }
+
+        b,
+        strong {
+            font-family: var(--font-main);
+        }
+
+        body {
+            font-family: var(--font-small);
+            background-color: var(--md-sys-color-surface);
+            color: var(--md-sys-color-on-surface);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            transition: background-color 0.3s, color 0.3s;
+            align-items: center;
+            overflow-x: hidden;
+        }
+
+        body.modal-open {
+            overflow: hidden;
+        }
+
+        header {
+            width: 100%;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-sizing: border-box;
+            background-color: var(--md-sys-color-surface);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: var(--md-sys-elevation-1);
+        }
+
+        .actions {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+
+
+        .logo {
+            font-family: var(--font-main);
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--md-sys-color-primary);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo svg {
+            width: 42px;
+            height: 42px;
+            fill: currentColor;
+        }
+
+        main {
+            width: 100%;
+            max-width: 600px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+            box-sizing: border-box;
+        }
+
+        .hero-section {
+            text-align: center;
+            margin-top: 40px;
+        }
+
+        .hero-title {
+            font-family: var(--font-main);
+            font-size: 32px;
+            font-weight: 700;
+            margin: 0;
+            letter-spacing: -0.5px;
+        }
+
+        .hero-subtitle {
+            font-size: 14px;
+            color: var(--md-sys-color-on-surface-variant);
+            margin-top: 8px;
+            padding: 0 16px;
+        }
+
+        @media (min-width: 600px) {
+            .hero-title {
+                font-size: 45px;
+                font-weight: 700;
+            }
+
+            .hero-subtitle {
+                font-size: 16px;
+            }
+        }
+
+        /* Device Card */
+        .device-card {
+            background-color: var(--md-sys-color-primary-container);
+            color: var(--md-sys-color-on-primary-container);
+            padding: 24px;
+            border-radius: 28px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            box-shadow: var(--md-sys-elevation-1);
+        }
+
+        .avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background-color: var(--md-sys-color-primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            font-weight: 500;
+            background-size: cover;
+            background-position: center;
+            cursor: pointer;
+            transition: background-color 0.2s ease, box-shadow 0.2s ease;
+            line-height: 1;
+            box-sizing: border-box;
+            overflow: hidden;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .avatar:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .device-info {
+            text-align: center;
+        }
+
+        .device-name {
+            font-family: var(--font-main);
+            font-size: 20px;
+            font-weight: 500;
+            word-break: break-word;
+            overflow-wrap: break-word;
+            max-width: 100%;
+        }
+
+        .device-id {
+            font-size: 12px;
+            opacity: 0.7;
+            font-family: monospace;
+            word-break: break-all;
+        }
+
+        .avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background-color: var(--md-sys-color-primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            font-weight: 500;
+            background-size: cover;
+            background-position: center;
+            cursor: pointer;
+            transition: background-color 0.2s ease, box-shadow 0.2s ease;
+            line-height: 1;
+            box-sizing: border-box;
+            overflow: hidden;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .avatar:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Discovery Section */
+        .discovery-section {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .section-title {
+            font-family: var(--font-main);
+            font-size: 14px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--md-sys-color-on-surface-variant);
+        }
+
+        .peer-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 16px;
+        }
+
+        .peer-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            padding: 16px;
+            border-radius: 24px;
+            transition: background-color 0.2s ease;
+            position: relative;
+            background-color: transparent;
+        }
+
+        .peer-item:hover {
+            background-color: var(--md-sys-color-primary-container);
+        }
+
+        .peer-avatar {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            background-color: var(--md-sys-color-secondary-container);
+            color: var(--md-sys-color-on-secondary-container);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            background-size: cover !important;
+            background-position: center !important;
+            background-repeat: no-repeat;
+            line-height: 1;
+            overflow: hidden;
+            box-sizing: border-box;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .peer-avatar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 50%;
+            border: 4px solid transparent;
+            pointer-events: none;
+            box-sizing: border-box;
+            transition: border-color 0.3s ease;
+        }
+
+        .peer-item:hover .peer-avatar {
+            background-color: var(--md-sys-color-primary);
+            color: white;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+        }
+
+        .peer-item:hover .peer-avatar::after {
+            border-color: var(--md-sys-color-primary);
+        }
+
+        .peer-item.selected .peer-avatar::after {
+            border-color: var(--md-sys-color-primary);
+        }
+
+        .peer-item.selected .peer-avatar {
+            box-shadow: 0 0 0 4px var(--md-sys-color-primary-container);
+        }
+
+        .peer-name {
+            font-family: var(--font-main);
+            font-size: 14px;
+            font-weight: 500;
+            text-align: center;
+            word-break: break-word;
+            overflow-wrap: break-word;
+            max-width: 100%;
+            color: var(--md-sys-color-on-surface);
+        }
+
+        /* Floating Action Button */
+        .fab {
+            position: fixed;
+            bottom: 32px;
+            right: 32px;
+            width: 64px;
+            height: 64px;
+            border-radius: 18px;
+            background-color: var(--md-sys-color-primary-container);
+            color: var(--md-sys-color-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 100;
+        }
+
+        .fab:hover {
+            transform: scale(1.1) rotate(90deg);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+            background-color: var(--md-sys-color-primary);
+            color: white;
+        }
+
+        .fab span {
+            font-size: 32px;
+        }
+
+        /* Modal / Overlay */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal {
+            background-color: var(--md-sys-color-surface);
+            padding: 24px;
+            border-radius: 28px;
+            width: 90%;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            box-shadow: var(--md-sys-elevation-3);
+            position: relative;
+            transition: filter 0.3s ease;
+        }
+
+        #transferActions {
+            transition: filter 0.3s ease, opacity 0.3s ease;
+        }
+
+        .modal-waiting #transferActions {
+            filter: brightness(0.6);
+            pointer-events: none;
+        }
+
+        .modal-title {
+            font-family: var(--font-main);
+            font-size: 24px;
+            font-weight: 500;
+        }
+
+        .modal-content {
+            font-size: 16px;
+            color: var(--md-sys-color-on-surface-variant);
+            word-break: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        .btn {
+            font-family: var(--font-main);
+            padding: 10px 24px;
+            border-radius: 20px;
+            border: none;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .btn-text {
+            background-color: transparent;
+            color: var(--md-sys-color-primary);
+            min-width: 44px;
+            height: 44px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 12px;
+            white-space: nowrap;
+        }
+
+        .btn-text:hover {
+            background-color: var(--md-sys-color-primary-container);
+        }
+
+        .btn-text.no-shade:hover {
+            background-color: transparent;
+            opacity: 0.7;
+        }
+
+        .btn-filled {
+            background-color: var(--md-sys-color-primary);
+            color: white;
+        }
+
+        .btn-filled:hover {
+            background-color: var(--md-sys-color-primary-container);
+            color: var(--md-sys-color-on-primary-container);
+        }
+
+        .btn-filled:disabled {
+            opacity: 0.5;
+            cursor: default;
+        }
+
+        @media (max-width: 600px) {
+            header {
+                padding: 12px 16px;
+            }
+
+            .logo {
+                font-size: 20px;
+            }
+
+            main {
+                padding: 16px;
+                gap: 24px;
+            }
+
+            .hero-section {
+                margin-top: 20px;
+            }
+
+            .peer-grid {
+                grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+                gap: 8px;
+            }
+
+            .peer-item {
+                padding: 12px 8px;
+            }
+
+            .peer-avatar {
+                width: 60px;
+                height: 60px;
+                font-size: 28px;
+            }
+
+            .fab {
+                bottom: 24px;
+                right: 24px;
+                width: 56px;
+                height: 56px;
+            }
+        }
+
+        /* Selected File Chip */
+        .selected-file-chip {
+            display: none;
+            margin-top: 4px;
+            padding: 8px 16px;
+            background-color: var(--md-sys-color-secondary-container);
+            color: var(--md-sys-color-on-secondary-container);
+            border-radius: 20px;
+            font-size: 14px;
+            align-items: center;
+            gap: 8px;
+            max-width: 90%;
+            margin-left: auto;
+            margin-right: auto;
+            border: 1px solid var(--md-sys-color-outline-variant);
+            animation: slide-up 0.3s ease-out;
+            width: fit-content;
+        }
+
+        #selectedFileName {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 180px;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        @keyframes slide-up {
+            from {
+                transform: translateY(10px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* Airdrop Animation Canvas */
+        .animation-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2000;
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            width: 100%;
+            height: 4px;
+            background-color: var(--md-sys-color-surface-variant);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background-color: var(--md-sys-color-primary);
+            transition: width 0.3s;
+        }
+
+        /* Avatar Picker */
+        .avatar-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .avatar-option {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            background-color: var(--md-sys-color-surface-variant);
+            transition: all 0.2s;
+            font-size: 24px;
+        }
+
+        .avatar-option:hover {
+            background-color: var(--md-sys-color-primary-container);
+            transform: scale(1.1);
+        }
+
+        /* Empty State */
+        .empty-state {
+            grid-column: 1 / -1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 200px;
+            padding: 32px;
+            color: var(--md-sys-color-on-surface-variant);
+            text-align: center;
+            gap: 12px;
+            background-color: var(--md-sys-color-surface-container-low);
+            border-radius: 28px;
+            border: 2px dashed var(--md-sys-color-outline-variant);
+            opacity: 0.7;
+            animation: pulse-bg 3s infinite ease-in-out;
+        }
+
+        @keyframes pulse-bg {
+            0% {
+                background-color: var(--md-sys-color-surface-container-low);
+            }
+
+            50% {
+                background-color: var(--md-sys-color-surface-container);
+            }
+
+            100% {
+                background-color: var(--md-sys-color-surface-container-low);
+            }
+        }
+
+        .empty-state .material-icons-round {
+            font-size: 48px;
+            margin-bottom: 8px;
+            color: var(--md-sys-color-primary);
+            opacity: 0.4;
+        }
+
+        .empty-state div {
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        /* QR / Link Section */
+        .share-link-container {
+            background-color: var(--md-sys-color-surface-variant);
+            padding: 16px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .share-link-text {
+            font-size: 12px;
+            font-family: monospace;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="logo">
+            <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#e3e3e3">
+                <path
+                    d="M204-150q-57-55-90.5-129.5T80-440q0-83 31.5-156T197-723q54-54 127-85.5T480-840q83 0 156 31.5T763-723q54 54 85.5 127T880-440q0 86-33.5 161T756-150l-56-56q46-44 73-104.5T800-440q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 69 27 129t74 104l-57 57Zm113-113q-35-33-56-78.5T240-440q0-100 70-170t170-70q100 0 170 70t70 170q0 53-21 99t-56 78l-57-57q25-23 39.5-54t14.5-66q0-66-47-113t-113-47q-66 0-113 47t-47 113q0 36 14.5 66.5T374-320l-57 57Zm106.5-120.5Q400-407 400-440t23.5-56.5Q447-520 480-520t56.5 23.5Q560-473 560-440t-23.5 56.5Q513-360 480-360t-56.5-23.5Z" />
+            </svg>
+            Bái Drop
+        </div>
+        <div class="actions">
+            <button class="btn btn-text no-shade" onclick="toggleTheme()" id="themeBtn" title="Toggle Theme">
+                <span class="material-icons-round" id="themeIcon">brightness_auto</span>
+            </button>
+            <button class="btn btn-text no-shade" onclick="openAccentPicker()" title="Change Accent Color">
+                <span class="material-icons-round"
+                    style="color: var(--md-sys-color-primary); font-size: 24px;">water_drop</span>
+            </button>
+
+            <button class="btn btn-text no-shade" onclick="toggleLanguage()" id="langBtn">VN</button>
+            <button class="btn btn-text no-shade" onclick="toggleFullScreen()" title="Full Screen">
+                <span class="material-icons-round" id="fullscreenIcon">fullscreen</span>
+            </button>
+        </div>
+    </header>
+
+    <main>
+        <div class="hero-section">
+            <h1 class="hero-title" data-t="hero_title">Send Files Instantly.</h1>
+            <p class="hero-subtitle" data-t="hero_subtitle">Secure, fast, and serverless peer-to-peer sharing.</p>
+        </div>
+
+        <div class="device-card" id="myDevice" style="position: relative;">
+            <div class="avatar" id="myAvatar" onclick="openAvatarPicker()">?</div>
+            <input type="file" id="avatarInput" accept="image/*" style="display: none;"
+                onchange="handleAvatarUpload(this)">
+            <div class="device-info">
+                <div style="display: flex; align-items: center; gap: 8px; justify-content: center; flex-wrap: wrap;">
+                    <div class="device-name" id="myName">Initializing...</div>
+                    <span class="material-icons-round" style="font-size: 18px; cursor: pointer; opacity: 0.6;"
+                        onclick="editName()">edit</span>
+                </div>
+                <div class="device-id" id="myId">---</div>
+            </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; align-items:center; gap:12px;">
+            <div class="selected-file-chip" id="selectedFileChip">
+                <span class="material-icons-round" style="font-size: 18px;">description</span>
+                <span id="selectedFileName">file.txt</span>
+                <span class="material-icons-round" style="font-size: 18px; cursor: pointer; opacity: 0.6;"
+                    onclick="clearSelection()">close</span>
+            </div>
+            <button id="qrShareBtn" class="btn btn-filled" style="display:none; gap:8px; align-items:center;" onclick="hostOfflineQR()">
+                <span class="material-icons-round">qr_code_2</span> Share Offline (QR)
+            </button>
+        </div>
+
+        <div class="discovery-section">
+            <div class="section-header">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <div class="section-title" data-t="nearby_devices">Nearby Devices</div>
+                    <button class="btn btn-text no-shade" onclick="scanOfflineQR()" title="Scan Offline QR" style="padding:2px 8px; font-size:18px; color:var(--md-sys-color-primary);">
+                        <span class="material-icons-round">qr_code_scanner</span>
+                    </button>
+                </div>
+                <div id="searchingIndicator" style="font-size: 12px; color: var(--md-sys-color-primary);"
+                    data-t="scanning">Scanning...</div>
+            </div>
+
+            <div class="peer-grid" id="peerGrid">
+                <!-- Peers will appear here -->
+                <div class="empty-state">
+                    <span class="material-icons-round" style="font-size: 48px; opacity: 0.5;">radar</span>
+                    <div data-t="no_peers">No one nearby yet. Share the link with someone on your network!</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div class="fab" id="selectFileFab" title="Select File to Send">
+        <span class="material-icons-round">add</span>
+        <input type="file" id="fileInput" multiple style="display: none;">
+        <input type="file" id="folderInput" webkitdirectory directory style="display: none;">
+    </div>
+
+    <!-- Overlay: QR Scanner -->
+    <div class="overlay" id="qrScannerOverlay">
+        <div class="modal">
+            <div class="modal-title">Scan Offline QR</div>
+            <div class="modal-content" style="display:flex; flex-direction:column; align-items:center; gap:16px;">
+                <div id="qrReader" style="width:100%; max-width:300px; border-radius:12px; overflow:hidden;"></div>
+                <div id="qrScannerStatus" style="font-size:12px; opacity:0.7;">Waiting for camera...</div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-text no-shade" onclick="closeQRScanner()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overlay: QR Display -->
+    <div class="overlay" id="qrDisplayOverlay">
+        <div class="modal">
+            <div class="modal-title" id="qrDisplayTitle">Hosting Offline</div>
+            <div class="modal-content" style="display:flex; flex-direction:column; align-items:center; gap:16px;">
+                <div id="qrcodeDisplay" style="padding:16px; background:white; border-radius:8px;"></div>
+                <div id="qrDisplayStatus" style="font-size:12px; opacity:0.7; text-align:center;">Ask the receiver to tap the Scanner icon and scan this code.</div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-text no-shade" onclick="closeQRDisplay()">Cancel</button>
+                <button class="btn btn-filled" id="scanAnswerBtn" onclick="scanOfflineQR()" style="display:none;">Scan Answer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overlay: Incoming Request -->
+    <div class="overlay" id="incomingOverlay">
+        <div class="modal">
+            <div class="modal-title" data-t="incoming_file">Incoming File</div>
+            <div class="modal-content" id="incomingContent">
+                <!-- Dynamic content -->
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-text" onclick="respondToRequest(false)" data-t="decline">Decline</button>
+                <button class="btn btn-filled" onclick="respondToRequest(true)" data-t="accept">Accept</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overlay: Transfer Modal -->
+    <div class="overlay" id="transferOverlay">
+        <div class="modal">
+            <div class="modal-title" id="transferTitle">Sending...</div>
+            <div class="modal-content">
+                <div style="margin-bottom: 12px;" id="transferStatus">Connecting...</div>
+                <div class="progress-container">
+                    <div class="progress-bar" id="progressBar"></div>
+                </div>
+                <div style="margin-top: 8px; font-size: 12px; display: flex; justify-content: space-between;">
+                    <span id="transferProgressText">0%</span>
+                    <span id="transferSpeed">0 KB/s</span>
+                </div>
+            </div>
+            <div class="modal-actions" id="transferActions" style="display: none;">
+                <button class="btn btn-filled" id="startBtn" onclick="startTransfer()" data-t="start_transfer">Start
+                    Transfer</button>
+            </div>
+            <div class="modal-actions" id="cancelAction">
+                <button class="btn btn-text" onclick="cancelTransfer()" data-t="cancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overlay: Avatar Picker -->
+    <div class="overlay" id="avatarOverlay" onclick="if(event.target===this)closeAvatarOverlay()">
+        <div class="modal">
+            <div class="modal-title" data-t="choose_avatar">Avatar Settings</div>
+            <div class="modal-content" id="avatarMainContent">
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <button class="btn btn-filled" onclick="document.getElementById('avatarInput').click()"
+                        data-t="upload_photo">Upload Photo</button>
+                    <button class="btn btn-text" onclick="showAvatarTemplates()" data-t="use_template">Use
+                        Template</button>
+                    <button class="btn btn-text" onclick="resetAvatar()" data-t="reset_to_letter">Reset to
+                        Letter</button>
+                </div>
+            </div>
+            <div class="modal-content" id="avatarTemplateContent" style="display: none;">
+                <div class="avatar-grid" id="avatarIconGrid"></div>
+
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-text" onclick="closeAvatarOverlay()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overlay: Selection Type Dialog -->
+    <div class="overlay" id="selectionTypeOverlay" onclick="if(event.target===this)closeSelectionTypeDialog()">
+        <div class="modal">
+            <div class="modal-title">Select Upload Type</div>
+            <div class="modal-content">
+                <div style="display: flex; flex-direction: column; gap: 16px;">
+                    <button class="btn btn-filled" onclick="triggerFileInput('file')"
+                        style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        <span class="material-icons-round">description</span>
+                        Files
+                    </button>
+                    <button class="btn btn-filled" onclick="triggerFileInput('folder')"
+                        style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        <span class="material-icons-round">folder</span>
+                        Folder
+                    </button>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-text" onclick="closeSelectionTypeDialog()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overlay: Accent Color Picker -->
+    <div class="overlay" id="accentOverlay" onclick="if(event.target===this)closeAccentOverlay()">
+        <div class="modal">
+            <div class="modal-title" data-t="choose_accent">Choose Accent Color</div>
+            <div class="modal-content">
+                <div class="avatar-grid" id="accentGrid">
+                    <!-- Predefined colors -->
+                    <div class="avatar-option" style="background-color: #f57c00;" onclick="setAccentColor('#f57c00')">
+                    </div> <!-- Original Orange -->
+                    <div class="avatar-option" style="background-color: #f44336;" onclick="setAccentColor('#f44336')">
+                    </div> <!-- Red -->
+                    <div class="avatar-option" style="background-color: #e91e63;" onclick="setAccentColor('#e91e63')">
+                    </div> <!-- Pink -->
+                    <div class="avatar-option" style="background-color: #9c27b0;" onclick="setAccentColor('#9c27b0')">
+                    </div> <!-- Purple -->
+                    <div class="avatar-option" style="background-color: #673ab7;" onclick="setAccentColor('#673ab7')">
+                    </div> <!-- Deep Purple -->
+                    <div class="avatar-option" style="background-color: #3f51b5;" onclick="setAccentColor('#3f51b5')">
+                    </div> <!-- Indigo -->
+                    <div class="avatar-option" style="background-color: #2196f3;" onclick="setAccentColor('#2196f3')">
+                    </div> <!-- Blue -->
+                    <div class="avatar-option" style="background-color: #03a9f4;" onclick="setAccentColor('#03a9f4')">
+                    </div> <!-- Light Blue -->
+                    <div class="avatar-option" style="background-color: #00bcd4;" onclick="setAccentColor('#00bcd4')">
+                    </div> <!-- Cyan -->
+                    <div class="avatar-option" style="background-color: #009688;" onclick="setAccentColor('#009688')">
+                    </div> <!-- Teal -->
+                    <div class="avatar-option" style="background-color: #4caf50;" onclick="setAccentColor('#4caf50')">
+                    </div> <!-- Green -->
+                    <div class="avatar-option" style="background-color: #8bc34a;" onclick="setAccentColor('#8bc34a')">
+                    </div> <!-- Light Green -->
+                    <div class="avatar-option" style="background-color: #cddc39;" onclick="setAccentColor('#cddc39')">
+                    </div> <!-- Lime -->
+                    <div class="avatar-option" style="background-color: #ffeb3b;" onclick="setAccentColor('#ffeb3b')">
+                    </div> <!-- Yellow -->
+                    <div class="avatar-option" style="background-color: #ffc107;" onclick="setAccentColor('#ffc107')">
+                    </div> <!-- Amber -->
+                    <div class="avatar-option" style="background-color: #ff9800;" onclick="setAccentColor('#ff9800')">
+                    </div> <!-- Orange -->
+                    <div class="avatar-option" style="background-color: #ff5722;" onclick="setAccentColor('#ff5722')">
+                    </div> <!-- Deep Orange -->
+                    <div class="avatar-option" style="background-color: #795548;" onclick="setAccentColor('#795548')">
+                    </div> <!-- Brown -->
+                    <div class="avatar-option" style="background-color: #ffb6c1;" onclick="setAccentColor('#ffb6c1')">
+                    </div> <!-- Light Pink -->
+                    <div class="avatar-option" style="background-color: #607d8b;" onclick="setAccentColor('#607d8b')">
+                    </div> <!-- Blue Grey -->
+
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-text" onclick="closeAccentOverlay()">Close</button>
+            </div>
+        </div>
+    </div>
+    <canvas id="airdropCanvas" class="animation-canvas"></canvas>
+    <div class="animation-container" id="animContainer">
+        <!-- Ripples and Icons will be added here via JS -->
+    </div>
+
+    <script>
+        // CONFIG
+        const DISCOVERY_ENDPOINT = '/api/discovery';
+
+        // UTILS: Cookies
+        function setCookie(name, value, days) {
+            try {
+                const date = new Date();
+                date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+                const expires = "expires=" + date.toUTCString();
+                document.cookie = name + "=" + encodeURIComponent(value) + ";" + expires + ";path=/";
+            } catch (e) {}
+        }
+
+        function getCookie(name) {
+            try {
+                const nameEQ = name + "=";
+                const ca = document.cookie.split(';');
+                for (let i = 0; i < ca.length; i++) {
+                    let c = ca[i];
+                    while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+                    if (c.indexOf(nameEQ) == 0) return decodeURIComponent(c.substring(nameEQ.length, c.length));
+                }
+            } catch (e) {}
+            return null;
+        }
+
+        // I18N
+        const TRANSLATIONS = {
+            en: {
+                hero_title: 'Send Files Instantly.',
+                hero_subtitle: 'Secure, fast, and serverless peer-to-peer sharing.',
+                nearby_devices: 'Nearby Devices',
+                scanning: 'Scanning...',
+                no_peers: 'No one nearby yet. Share the link with someone on your network!',
+                incoming_file: 'Incoming File',
+                accept: 'Accept',
+                decline: 'Decline',
+                start_transfer: 'Start Transfer',
+                cancel: 'Cancel',
+                connecting: 'Connecting...',
+                requesting: 'Requesting permission...',
+                accepted_wait: 'Accepted! Both must press Start.',
+                waiting_other: 'Waiting for other party...',
+                sending: 'Sending...',
+                receiving: 'Receiving...',
+                sent_success: 'Sent Successfully!',
+                received_success: 'Received Successfully!',
+                link_copied: 'Link copied! Share it with the recipient.',
+                error_connection: 'Connection error',
+                error_link: 'Link expired or sender offline.',
+                choose_accent: 'Choose Accent Color',
+                edit_name_prompt: 'Enter your device name:',
+                initializing: 'Initializing...',
+                wants_to_send: 'wants to send you',
+                ready_to_send: 'Ready to Send',
+                ready_to_receive: 'Ready to Receive',
+                initial_prompt: 'Please select a file first using the + button.',
+                cancelled: 'Transfer cancelled by the other party.',
+                cancel: 'Cancel',
+                theme_auto: 'Auto',
+                theme_light: 'Light',
+                theme_dark: 'Dark',
+                choose_avatar: 'Avatar Settings',
+                upload_photo: 'Upload Photo',
+                use_template: 'Use Template',
+                reset_to_letter: 'Reset to Letter'
+            },
+            vi: {
+                hero_title: 'Gửi tệp ngay lập tức.',
+                hero_subtitle: 'Bảo mật, nhanh chóng và chia sẻ ngang hàng không cần máy chủ.',
+                nearby_devices: 'Thiết bị lân cận',
+                scanning: 'Đang tìm kiếm...',
+                no_peers: 'Chưa thấy ai lân cận. Hãy chia sẻ liên kết với mọi người!',
+                incoming_file: 'Tệp đang đến',
+                accept: 'Chấp nhận',
+                decline: 'Từ chối',
+                start_transfer: 'Bắt đầu gửi',
+                cancel: 'Hủy bỏ',
+                connecting: 'Đang kết nối...',
+                requesting: 'Đang xin phép...',
+                accepted_wait: 'Đã chấp nhận! Cả hai cần nhấn Bắt đầu.',
+                waiting_other: 'Đang chờ đối phương...',
+                sending: 'Đang gửi...',
+                receiving: 'Đang nhận...',
+                sent_success: 'Đã gửi thành công!',
+                received_success: 'Đã nhận thành công!',
+                link_copied: 'Đã sao chép liên kết! Hãy gửi cho người nhận.',
+                error_connection: 'Lỗi kết nối',
+                error_link: 'Liên kết hết hạn hoặc người gửi ngoại tuyến.',
+                choose_accent: 'Chọn màu chủ đạo',
+                edit_name_prompt: 'Nhập tên thiết bị của bạn:',
+                initializing: 'Đang khởi tạo...',
+                wants_to_send: 'muốn gửi cho bạn',
+                ready_to_send: 'Sẵn sàng gửi',
+                ready_to_receive: 'Sẵn sàng nhận',
+                initial_prompt: 'Vui lòng chọn tệp trước bằng nút +.',
+                cancelled: 'Chuyển đã bị hủy bởi đối phương.',
+                cancel: 'Hủy',
+                theme_auto: 'Tự động',
+                theme_light: 'Sáng',
+                theme_dark: 'Tối',
+                choose_avatar: 'Cài đặt ảnh đại diện',
+                upload_photo: 'Tải ảnh lên',
+                use_template: 'Dùng mẫu',
+                reset_to_letter: 'Dùng chữ cái mặc định',
+                select_folder_prompt: 'Chọn Thư mục thay vì Tệp?'
+            }
+        };
+
+        // UTILS: Persistence
+        function saveSetting(name, value) {
+            try { localStorage.setItem(name, value); } catch (e) { }
+            // Only save to cookie if it's small to avoid truncation and silent failures
+            if (value && value.length < 3000) {
+                setCookie(name, value, 365);
+            } else {
+                setCookie(name, '', -1); // Clear if too large
+            }
+        }
+
+        function getSetting(name) {
+            try {
+                let val = localStorage.getItem(name);
+                if (val !== null) return val;
+                return getCookie(name);
+            } catch (e) {
+                return getCookie(name);
+            }
+        }
+
+        let currentLang = getSetting('baidrop-lang') || 'en';
+        let currentTheme = getSetting('baidrop-theme') || 'auto';
+        let currentAccent = getSetting('baidrop-accent') || '#f57c00';
+
+        // STATE
+        let myPeer = null;
+        let myNameValue = getSetting('baidrop-name');
+        if (!myNameValue) {
+            myNameValue = generateFriendlyName();
+            saveSetting('baidrop-name', myNameValue);
+        }
+        let myName = myNameValue;
+        let myAvatar = getSetting('baidrop-avatar') || 'airdrop';
+        let myId = getSetting('baidrop-id') || null;
+        let myIpHash = 'global';
+        let peers = new Map();
+        let currentConnection = null;
+        let selectedFiles = []; // Array of File objects
+        let pendingTransfer = null;
+        let transferRole = null;
+        let hasPressedStart = false;
+        let otherHasPressedStart = false;
+        let receiveStartTime = null;
+
+        // PREVENT MULTIPLE INSTANCES
+        const instanceChannel = new BroadcastChannel('baidrop_instance');
+        instanceChannel.postMessage('new_instance_check');
+        instanceChannel.onmessage = (e) => {
+            if (e.data === 'new_instance_check') {
+                instanceChannel.postMessage('already_exists');
+            } else if (e.data === 'already_exists') {
+                document.body.innerHTML = '<div style="display:flex; height:100vh; width:100vw; align-items:center; justify-content:center; text-align:center; padding:20px; font-family:var(--font-main); color:var(--md-sys-color-error);"><h2>Bái Drop is already open in another tab.</h2></div>';
+                throw new Error("Duplicate instance");
+            }
+        };
+
+        // UI ELEMENTS (Global access)
+        const myAvatarEl = () => document.getElementById('myAvatar');
+        const myNameEl = () => document.getElementById('myName');
+        const myIdEl = () => document.getElementById('myId');
+        const progressBar = () => document.getElementById('progressBar');
+
+        function t(key) { return TRANSLATIONS[currentLang][key] || key; }
+
+        async function fetchIpAndInit() {
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 second timeout
+                const res = await fetch('https://api.ipify.org?format=json', { signal: controller.signal });
+                clearTimeout(timeoutId);
+                const data = await res.json();
+                myIpHash = btoa(data.ip).substring(0, 8).replace(/[+/=]/g, '');
+                console.log('Network Hash:', myIpHash);
+            } catch (e) { console.warn("IP fetch failed or timed out", e); }
+            initPeer();
+            initVercelDiscovery();
+        }
+
+        function init() {
+            setTheme(currentTheme);
+            setAccentColor(currentAccent);
+            updateUI();
+            setupFileSelection();
+            fetchIpAndInit();
+            checkUrlForPeer();
+            // Faster periodic peer list cleanup
+            setInterval(renderPeers, 3000);
+        }
+
+        function registerServiceWorker() {
+            // Disabled: Single-file blob: SW is non-standard and causes errors in many browsers
+        }
+
+        function updateUI() {
+            document.querySelectorAll('[data-t]').forEach(el => {
+                const key = el.getAttribute('data-t');
+                el.innerText = t(key);
+            });
+
+            const lb = document.getElementById('langBtn');
+            if (lb) lb.innerText = currentLang.toUpperCase();
+            if (myNameEl()) myNameEl().innerText = myName;
+
+            const av = myAvatarEl();
+            if (av) {
+                if (myAvatar && myAvatar.startsWith('data:image')) {
+                    av.style.backgroundImage = `url(${myAvatar})`;
+                    av.innerText = '';
+                    av.classList.remove('material-icons-round');
+                } else if (myAvatar && myAvatar !== 'default' && myAvatar !== '?' && myAvatar !== 'airdrop') {
+                    // It's a template icon
+                    if (myAvatar === 'logo') {
+                        av.style.backgroundImage = 'none';
+                        av.classList.remove('material-icons-round');
+                        av.innerHTML = `
+                            <svg xmlns="http://www.w3.org/2000/svg" height="60%" viewBox="0 -960 960 960" width="60%" fill="currentColor" style="display: block; margin: auto;"><path d="M204-150q-57-55-90.5-129.5T80-440q0-83 31.5-156T197-723q54-54 127-85.5T480-840q83 0 156 31.5T763-723q54 54 85.5 127T880-440q0 86-33.5 161T756-150l-56-56q46-44 73-104.5T800-440q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 69 27 129t74 104l-57 57Zm113-113q-35-33-56-78.5T240-440q0-100 70-170t170-70q100 0 170 70t70 170q0 53-21 99t-56 78l-57-57q25-23 39.5-54t14.5-66q0-66-47-113t-113-47q-66 0-113 47t-47 113q0 36 14.5 66.5T374-320l-57 57Zm106.5-120.5Q400-407 400-440t23.5-56.5Q447-520 480-520t56.5 23.5Q560-473 560-440t-23.5 56.5Q513-360 480-360t-56.5-23.5Z"/></svg>
+                        `;
+                    } else if (myAvatar === 'lotus') {
+                        av.style.backgroundImage = 'none';
+                        av.classList.remove('material-icons-round');
+                        av.innerHTML = `
+                            <svg xmlns="http://www.w3.org/2000/svg" height="85%" viewBox="0 0 1200 1200" width="85%" style="display: block; margin: auto;">
+                                <path style="fill:currentColor;" d="M1000.572,745.016c-44.434-43.957-100.521-71.965-162.221-80.999c-7.871-1.154-15.2,4.34-16.337,12.184c-1.15,7.862,4.311,15.198,12.176,16.354c50.463,7.385,97.034,29.021,135.136,62.706c-46.871,41.374-107.055,64.697-170.291,65.842c-60.116,1.126-118.169-17.948-165.282-53.794c143.529-18.456,255.592-141.249,256.393-288.881c0.022-3.824-1.517-7.569-4.209-10.263c-2.896-2.915-6.789-4.507-10.528-4.236c-61.126,0.386-119.502,19.501-168.829,55.292c-6.431,4.675-7.862,13.71-3.193,20.142c2.264,3.112,5.601,5.159,9.401,5.765c3.8,0.605,7.623-0.305,10.739-2.569c40.309-29.253,87.63-46.223,137.276-49.293c-4.075,65.321-32.319,126.374-80.014,172.598c-41.287,40.016-93.359,65.12-149.248,72.602C720.055,624.094,713,458.571,609.744,354.188c-2.631-2.661-6.367-4.188-10.254-4.188c-3.883,0-7.619,1.526-10.247,4.185c-43.958,44.436-71.967,100.524-80.994,162.207c-1.15,7.862,4.311,15.198,12.214,16.359c7.865,1.108,15.177-4.362,16.318-12.184c7.386-50.454,29.02-97.026,62.7-135.133c42.975,48.756,65.893,111.571,64.677,177.702c-1.054,57.236-20.174,111.619-54.352,156.335C591.51,577.132,470.212,465.499,324.438,463.997c-3.934-0.027-7.6,1.44-10.359,4.171c-2.714,2.689-4.273,6.423-4.273,10.247v26.761c0,0.473,0.022,0.952,0.074,1.461c4.991,49.044,22.589,96.339,50.888,136.774c4.544,6.5,13.543,8.092,20.083,3.546c3.155-2.208,5.263-5.513,5.93-9.305c0.67-3.794-0.176-7.621-2.386-10.776c-25.342-36.205-41.158-78.537-45.753-122.443v-11.043c64.571,4.298,124.946,32.594,170.639,80.139c39.478,41.075,64.261,92.746,71.679,148.111c-113.551-87.461-278.115-78.846-381.493,22.416c-2.765,2.719-4.298,6.351-4.317,10.215c-0.022,3.83,1.52,7.578,4.225,10.274l18.866,18.861c0.351,0.361,0.718,0.693,1.14,1.041c51.565,42.029,116.721,65.173,183.473,65.172c0.007,0,0.019,0,0.022,0h0.536c52.169-0.04,103.335-14.055,147.964-40.534c3.311-1.964,5.662-5.103,6.613-8.834c0.955-3.733,0.396-7.614-1.565-10.921c-1.961-3.311-5.096-5.662-8.829-6.615c-3.739-0.961-7.625-0.396-10.937,1.568c-40.152,23.824-86.206,36.445-133.198,36.499h-0.738c-59.842-0.032-118.266-20.71-164.556-58.234l-7.814-7.807c48.745-42.702,111.311-65.544,177.131-64.503c68.167,1.099,132.125,27.821,180.097,75.246c0.016,0.016,0.032,0.032,0.048,0.047c0.001,0.001,0.002,0.002,0.003,0.004c0.001,0.001,0.002,0.002,0.003,0.003c0.028,0.027,0.056,0.055,0.083,0.082C642.766,820.036,716.026,850,794.038,850c0.009,0,0.028,0,0.038,0c78.088-0.003,151.425-30.007,206.499-84.488c2.718-2.69,4.276-6.425,4.276-10.247C1004.852,751.441,1003.293,747.706,1000.572,745.016z"/>
+                            </svg>
+                        `;
+                    } else {
+                        av.style.backgroundImage = 'none';
+                        av.innerHTML = myAvatar;
+                        av.classList.add('material-icons-round');
+                    }
+                } else {
+                    av.style.backgroundImage = 'none';
+                    av.innerHTML = myName[0].toUpperCase();
+                    av.classList.remove('material-icons-round');
+                }
+            }
+
+            if (myIdEl()) myIdEl().innerText = (myId || t('initializing'));
+        }
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'en' ? 'vi' : 'en';
+            saveSetting('baidrop-lang', currentLang);
+            updateUI();
+            renderPeers();
+        }
+
+        function setTheme(theme) {
+            currentTheme = theme;
+            saveSetting('baidrop-theme', theme);
+            const html = document.documentElement;
+            const icon = document.getElementById('themeIcon');
+            if (!icon) return;
+            if (theme === 'auto') {
+                html.removeAttribute('data-theme');
+                icon.innerText = 'brightness_auto';
+            } else if (theme === 'dark') {
+                html.setAttribute('data-theme', 'dark');
+                icon.innerText = 'dark_mode';
+            } else {
+                html.setAttribute('data-theme', 'light');
+                icon.innerText = 'light_mode';
+            }
+        }
+
+        function toggleTheme() {
+            if (currentTheme === 'auto') setTheme('light');
+            else if (currentTheme === 'light') setTheme('dark');
+            else setTheme('auto');
+        }
+
+        function setAccentColor(color) {
+            currentAccent = color;
+            saveSetting('baidrop-accent', color);
+            document.documentElement.style.setProperty('--md-sys-color-primary', color);
+
+            // Adjust contrast: if color is very light, use dark text on it
+            // Simple luma calculation
+            const hex = color.replace('#', '');
+            const r = parseInt(hex.substring(0, 2), 16);
+            const g = parseInt(hex.substring(2, 4), 16);
+            const b = parseInt(hex.substring(4, 6), 16);
+            const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+            const onPrimary = luma > 160 ? '#2e1500' : '#ffffff';
+            document.documentElement.style.setProperty('--md-sys-color-on-primary', onPrimary);
+
+            // Update containers based on luma too
+            if (luma > 160) {
+                // Already light, darken for container
+                document.documentElement.style.setProperty('--md-sys-color-primary-container', `rgba(${r},${g},${b},0.15)`);
+                document.documentElement.style.setProperty('--md-sys-color-secondary-container', `rgba(${r},${g},${b},0.1)`);
+            } else {
+                // Dark color, lighten for container
+                document.documentElement.style.setProperty('--md-sys-color-primary-container', `rgba(${r},${g},${b},0.2)`);
+                document.documentElement.style.setProperty('--md-sys-color-secondary-container', `rgba(${r},${g},${b},0.15)`);
+            }
+            closeAccentOverlay();
+        }
+
+        function toggleFullScreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+                document.getElementById('fullscreenIcon').innerText = 'fullscreen_exit';
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                    document.getElementById('fullscreenIcon').innerText = 'fullscreen';
+                }
+            }
+        }
+
+        function generateFriendlyName() {
+            const adjectives = ['Happy', 'Swift', 'Bright', 'Golden', 'Cool', 'Silent', 'Lunar', 'Super'];
+            const animals = ['Panda', 'Eagle', 'Fox', 'Dolphin', 'Tiger', 'Koala', 'Falcon', 'Owl'];
+            return adjectives[Math.floor(Math.random() * adjectives.length)] + ' ' +
+                animals[Math.floor(Math.random() * animals.length)];
+        }
+
+        function editName() {
+            const newName = prompt(t('edit_name_prompt'), myName);
+            if (newName && newName.trim()) {
+                let trimmedName = newName.trim();
+                if (trimmedName.length > 47) {
+                    trimmedName = trimmedName.substring(0, 47);
+                }
+                myName = trimmedName;
+                saveSetting('baidrop-name', myName);
+                updateUI();
+                pollVercel();
+            }
+        }
+
+        function openAccentPicker() {
+            if (document.getElementById('transferOverlay').style.display === 'flex') return;
+            document.getElementById('accentOverlay').style.display = 'flex';
+            document.body.classList.add('modal-open');
+        }
+
+        function closeAccentOverlay() {
+            document.getElementById('accentOverlay').style.display = 'none';
+            document.body.classList.remove('modal-open');
+        }
+
+        function openAvatarPicker() {
+            if (document.getElementById('transferOverlay').style.display === 'flex') return;
+            showAvatarMain();
+            document.getElementById('avatarOverlay').style.display = 'flex';
+            document.body.classList.add('modal-open');
+        }
+
+        function closeAvatarOverlay() {
+            document.getElementById('avatarOverlay').style.display = 'none';
+            document.body.classList.remove('modal-open');
+        }
+
+        function showAvatarMain() {
+            document.getElementById('avatarMainContent').style.display = 'block';
+            document.getElementById('avatarTemplateContent').style.display = 'none';
+        }
+
+        function showAvatarTemplates() {
+            document.getElementById('avatarMainContent').style.display = 'none';
+            const grid = document.getElementById('avatarIconGrid');
+            grid.innerHTML = '';
+            const icons = ['logo', 'lotus', 'rocket', 'face', 'pets', 'star', 'bolt', 'eco', 'favorite', 'cloud', 'smartphone', 'laptop', 'auto_fix_high', 'psychology', 'explore', 'public', 'diamond', 'celebration', 'coffee', 'music_note'];
+            icons.forEach(icon => {
+                const div = document.createElement('div');
+                div.className = 'avatar-option';
+                if (icon === 'logo') {
+                    div.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" height="36px" viewBox="0 -960 960 960" width="36px" fill="currentColor"><path d="M204-150q-57-55-90.5-129.5T80-440q0-83 31.5-156T197-723q54-54 127-85.5T480-840q83 0 156 31.5T763-723q54 54 85.5 127T880-440q0 86-33.5 161T756-150l-56-56q46-44 73-104.5T800-440q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 69 27 129t74 104l-57 57Zm113-113q-35-33-56-78.5T240-440q0-100 70-170t170-70q100 0 170 70t70 170q0 53-21 99t-56 78l-57-57q25-23 39.5-54t14.5-66q0-66-47-113t-113-47q-66 0-113 47t-47 113q0 36 14.5 66.5T374-320l-57 57Zm106.5-120.5Q400-407 400-440t23.5-56.5Q447-520 480-520t56.5 23.5Q560-473 560-440t-23.5 56.5Q513-360 480-360t-56.5-23.5Z"/></svg>
+                    `;
+                } else if (icon === 'lotus') {
+                    div.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" height="52px" viewBox="0 0 1200 1200" width="52px" style="display: block; margin: auto;">
+                            <path style="fill:currentColor;" d="M1000.572,745.016c-44.434-43.957-100.521-71.965-162.221-80.999c-7.871-1.154-15.2,4.34-16.337,12.184c-1.15,7.862,4.311,15.198,12.176,16.354c50.463,7.385,97.034,29.021,135.136,62.706c-46.871,41.374-107.055,64.697-170.291,65.842c-60.116,1.126-118.169-17.948-165.282-53.794c143.529-18.456,255.592-141.249,256.393-288.881c0.022-3.824-1.517-7.569-4.209-10.263c-2.896-2.915-6.789-4.507-10.528-4.236c-61.126,0.386-119.502,19.501-168.829,55.292c-6.431,4.675-7.862,13.71-3.193,20.142c2.264,3.112,5.601,5.159,9.401,5.765c3.8,0.605,7.623-0.305,10.739-2.569c40.309-29.253,87.63-46.223,137.276-49.293c-4.075,65.321-32.319,126.374-80.014,172.598c-41.287,40.016-93.359,65.12-149.248,72.602C720.055,624.094,713,458.571,609.744,354.188c-2.631-2.661-6.367-4.188-10.254-4.188c-3.883,0-7.619,1.526-10.247,4.185c-43.958,44.436-71.967,100.524-80.994,162.207c-1.15,7.862,4.311,15.198,12.214,16.359c7.865,1.108,15.177-4.362,16.318-12.184c7.386-50.454,29.02-97.026,62.7-135.133c42.975,48.756,65.893,111.571,64.677,177.702c-1.054,57.236-20.174,111.619-54.352,156.335C591.51,577.132,470.212,465.499,324.438,463.997c-3.934-0.027-7.6,1.44-10.359,4.171c-2.714,2.689-4.273,6.423-4.273,10.247v26.761c0,0.473,0.022,0.952,0.074,1.461c4.991,49.044,22.589,96.339,50.888,136.774c4.544,6.5,13.543,8.092,20.083,3.546c3.155-2.208,5.263-5.513,5.93-9.305c0.67-3.794-0.176-7.621-2.386-10.776c-25.342-36.205-41.158-78.537-45.753-122.443v-11.043c64.571,4.298,124.946,32.594,170.639,80.139c39.478,41.075,64.261,92.746,71.679,148.111c-113.551-87.461-278.115-78.846-381.493,22.416c-2.765,2.719-4.298,6.351-4.317,10.215c-0.022,3.83,1.52,7.578,4.225,10.274l18.866,18.861c0.351,0.361,0.718,0.693,1.14,1.041c51.565,42.029,116.721,65.173,183.473,65.172c0.007,0,0.019,0,0.022,0h0.536c52.169-0.04,103.335-14.055,147.964-40.534c3.311-1.964,5.662-5.103,6.613-8.834c0.955-3.733,0.396-7.614-1.565-10.921c-1.961-3.311-5.096-5.662-8.829-6.615c-3.739-0.961-7.625-0.396-10.937,1.568c-40.152,23.824-86.206,36.445-133.198,36.499h-0.738c-59.842-0.032-118.266-20.71-164.556-58.234l-7.814-7.807c48.745-42.702,111.311-65.544,177.131-64.503c68.167,1.099,132.125,27.821,180.097,75.246c0.016,0.016,0.032,0.032,0.048,0.047c0.001,0.001,0.002,0.002,0.003,0.004c0.001,0.001,0.002,0.002,0.003,0.003c0.028,0.027,0.056,0.055,0.083,0.082C642.766,820.036,716.026,850,794.038,850c0.009,0,0.028,0,0.038,0c78.088-0.003,151.425-30.007,206.499-84.488c2.718-2.69,4.276-6.425,4.276-10.247C1004.852,751.441,1003.293,747.706,1000.572,745.016z"/>
+                        </svg>
+                    `;
+                } else {
+                    div.classList.add('material-icons-round');
+                    div.innerText = icon;
+                }
+                div.onclick = () => selectTemplateIcon(icon);
+                grid.appendChild(div);
+            });
+            document.getElementById('avatarTemplateContent').style.display = 'block';
+        }
+
+        function selectTemplateIcon(icon) {
+            myAvatar = icon;
+            saveSetting('baidrop-avatar', myAvatar);
+            updateUI();
+            pollVercel();
+            closeAvatarOverlay();
+            closeAccentOverlay();
+        }
+
+        function resetAvatar() {
+            myAvatar = 'default';
+            saveSetting('baidrop-avatar', myAvatar);
+            updateUI();
+            pollVercel();
+            closeAvatarOverlay();
+            closeAccentOverlay();
+        }
+
+        function handleAvatarUpload(input) {
+            const file = input.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = 120; canvas.height = 120;
+                        const ctx = canvas.getContext('2d');
+                        const minDim = Math.min(img.width, img.height);
+                        ctx.drawImage(img, (img.width - minDim) / 2, (img.height - minDim) / 2, minDim, minDim, 0, 0, 120, 120);
+                        myAvatar = canvas.toDataURL('image/jpeg', 0.8);
+                        saveSetting('baidrop-avatar', myAvatar);
+                        updateUI();
+                        pollVercel();
+                        closeAvatarOverlay();
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // PEER LOGIC
+        let peerRetryCount = 0;
+        function initPeer() {
+            console.log('Attempting PeerJS init with ID:', myId);
+            myPeer = new Peer(myId || undefined, {
+                debug: 1,
+                config: {
+                    'iceServers': [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:global.stun.twilio.com:3478' }
+                    ]
+                }
+            });
+
+            myPeer.on('open', (id) => {
+                myId = id;
+                peerRetryCount = 0;
+                saveSetting('baidrop-id', id);
+                if (myIdEl()) myIdEl().innerText = id;
+                console.log('PeerJS Online:', id);
+            });
+
+            myPeer.on('connection', (conn) => {
+                console.log('Incoming connection from:', conn.peer);
+                handleIncomingConnection(conn);
+            });
+
+            myPeer.on('error', (err) => {
+                console.error('PeerJS Error:', err.type, err);
+                if (err.type === 'unavailable-id') {
+                    if (peerRetryCount < 2) {
+                        peerRetryCount++;
+                        console.log('ID busy, retrying in 2s...');
+                        setTimeout(initPeer, 2000);
+                    } else {
+                        console.log('ID persistently busy, getting new ID');
+                        myId = null;
+                        initPeer();
+                    }
+                }
+            });
+        }
+
+        // DISCOVERY
+        let discoveryInterval = null;
+
+        function initVercelDiscovery() {
+            if (discoveryInterval) clearInterval(discoveryInterval);
+            pollVercel();
+            discoveryInterval = setInterval(pollVercel, 3000);
+            console.log('Discovery: Started Vercel Polling');
+        }
+
+        async function pollVercel() {
+            if (!myId) return; // Wait until PeerJS gives us an ID
+            
+            try {
+                const hostHash = btoa(window.location.hostname).replace(/[+/=]/g, '').substring(0, 10);
+                
+                const res = await fetch(DISCOVERY_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: myId,
+                        name: myName,
+                        avatar: myAvatar,
+                        ipHash: myIpHash,
+                        hostHash: hostHash
+                    })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.peers && Array.isArray(data.peers)) {
+                        data.peers.forEach(p => {
+                            if (p.id !== myId) {
+                                peers.set(p.id, { ...p, lastSeen: Date.now() });
+                            }
+                        });
+                        renderPeers();
+                    }
+                }
+            } catch (err) {
+                console.warn('Vercel Discovery Poll Failed:', err);
+            }
+        }
+
+        function renderPeers() {
+            const now = Date.now();
+            let changed = false;
+            for (let [id, peer] of peers) {
+                if (now - peer.lastSeen > 6000) { // Removal threshold: 6 seconds
+                    peers.delete(id);
+                    changed = true;
+                }
+            }
+
+            if (peers.size === 0) {
+                peerGrid.innerHTML = `
+                    <div class="empty-state">
+                        <span class="material-icons-round">radar</span>
+                        <div data-t="no_peers">${t('no_peers')}</div>
+                    </div>
+                `;
+                return;
+            }
+
+            peerGrid.innerHTML = '';
+            peers.forEach((peer, id) => {
+                const item = document.createElement('div');
+                item.className = 'peer-item';
+                item.style.pointerEvents = 'auto';
+
+                let avatarHtml = '';
+                if (peer.avatar && peer.avatar.startsWith('data:image')) {
+                    avatarHtml = `<div class="peer-avatar"><img src="${peer.avatar}" style="width:100%; height:100%; object-fit:cover; display:block;"></div>`;
+                } else if (peer.avatar && peer.avatar !== 'default' && peer.avatar !== 'airdrop') {
+                    if (peer.avatar === 'logo') {
+                        avatarHtml = `
+                            <div class="peer-avatar">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" style="width:100%; height:100%; display: block;" fill="currentColor"><path d="M204-150q-57-55-90.5-129.5T80-440q0-83 31.5-156T197-723q54-54 127-85.5T480-840q83 0 156 31.5T763-723q54 54 85.5 127T880-440q0 86-33.5 161T756-150l-56-56q46-44 73-104.5T800-440q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 69 27 129t74 104l-57 57Zm113-113q-35-33-56-78.5T240-440q0-100 70-170t170-70q100 0 170 70t70 170q0 53-21 99t-56 78l-57-57q25-23 39.5-54t14.5-66q0-66-47-113t-113-47q-66 0-113 47t-47 113q0 36 14.5 66.5T374-320l-57 57Zm106.5-120.5Q400-407 400-440t23.5-56.5Q447-520 480-520t56.5 23.5Q560-473 560-440t-23.5 56.5Q513-360 480-360t-56.5-23.5Z"/></svg>
+                            </div>
+                        `;
+                    } else if (peer.avatar === 'lotus') {
+                        avatarHtml = `
+                            <div class="peer-avatar">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1200" style="width:85%; height:85%; display: block;" fill="currentColor">
+                                    <path d="M1000.572,745.016c-44.434-43.957-100.521-71.965-162.221-80.999c-7.871-1.154-15.2,4.34-16.337,12.184c-1.15,7.862,4.311,15.198,12.176,16.354c50.463,7.385,97.034,29.021,135.136,62.706c-46.871,41.374-107.055,64.697-170.291,65.842c-60.116,1.126-118.169-17.948-165.282-53.794c143.529-18.456,255.592-141.249,256.393-288.881c0.022-3.824-1.517-7.569-4.209-10.263c-2.896-2.915-6.789-4.507-10.528-4.236c-61.126,0.386-119.502,19.501-168.829,55.292c-6.431,4.675-7.862,13.71-3.193,20.142c2.264,3.112,5.601,5.159,9.401,5.765c3.8,0.605,7.623-0.305,10.739-2.569c40.309-29.253,87.63-46.223,137.276-49.293c-4.075,65.321-32.319,126.374-80.014,172.598c-41.287,40.016-93.359,65.12-149.248,72.602C720.055,624.094,713,458.571,609.744,354.188c-2.631-2.661-6.367-4.188-10.254-4.188c-3.883,0-7.619,1.526-10.247,4.185c-43.958,44.436-71.967,100.524-80.994,162.207c-1.15,7.862,4.311,15.198,12.214,16.359c7.865,1.108,15.177-4.362,16.318-12.184c7.386-50.454,29.02-97.026,62.7-135.133c42.975,48.756,65.893,111.571,64.677,177.702c-1.054,57.236-20.174,111.619-54.352,156.335C591.51,577.132,470.212,465.499,324.438,463.997c-3.934-0.027-7.6,1.44-10.359,4.171c-2.714,2.689-4.273,6.423-4.273,10.247v26.761c0,0.473,0.022,0.952,0.074,1.461c4.991,49.044,22.589,96.339,50.888,136.774c4.544,6.5,13.543,8.092,20.083,3.546c3.155-2.208,5.263-5.513,5.93-9.305c0.67-3.794-0.176-7.621-2.386-10.776c-25.342-36.205-41.158-78.537-45.753-122.443v-11.043c64.571,4.298,124.946,32.594,170.639,80.139c39.478,41.075,64.261,92.746,71.679,148.111c-113.551-87.461-278.115-78.846-381.493,22.416c-2.765,2.719-4.298,6.351-4.317,10.215c-0.022,3.83,1.52,7.578,4.225,10.274l18.866,18.861c0.351,0.361,0.718,0.693,1.14,1.041c51.565,42.029,116.721,65.173,183.473,65.172c0.007,0,0.019,0,0.022,0h0.536c52.169-0.04,103.335-14.055,147.964-40.534c3.311-1.964,5.662-5.103,6.613-8.834c0.955-3.733,0.396-7.614-1.565-10.921c-1.961-3.311-5.096-5.662-8.829-6.615c-3.739-0.961-7.625-0.396-10.937,1.568c-40.152,23.824-86.206,36.445-133.198,36.499h-0.738c-59.842-0.032-118.266-20.71-164.556-58.234l-7.814-7.807c48.745-42.702,111.311-65.544,177.131-64.503c68.167,1.099,132.125,27.821,180.097,75.246c0.016,0.016,0.032,0.032,0.048,0.047c0.001,0.001,0.002,0.002,0.003,0.004c0.001,0.001,0.002,0.002,0.003,0.003c0.028,0.027,0.056,0.055,0.083,0.082C642.766,820.036,716.026,850,794.038,850c0.009,0,0.028,0,0.038,0c78.088-0.003,151.425-30.007,206.499-84.488c2.718-2.69,4.276-6.425,4.276-10.247C1004.852,751.441,1003.293,747.706,1000.572,745.016z"/>
+                                </svg>
+                            </div>
+                        `;
+                    } else {
+                        avatarHtml = `<div class="peer-avatar material-icons-round">${peer.avatar}</div>`;
+                    }
+                } else {
+                    avatarHtml = `<div class="peer-avatar">${peer.name[0].toUpperCase()}</div>`;
+                }
+
+                item.innerHTML = `
+                    ${avatarHtml}
+                    <div class="peer-name" style="pointer-events: none;">${peer.name}</div>
+                `;
+                item.onclick = (e) => {
+                    e.preventDefault();
+                    selectPeer(id);
+                };
+                peerGrid.appendChild(item);
+            });
+        }
+
+        function setupFileSelection() {
+            selectFileFab.onclick = () => {
+                document.getElementById('selectionTypeOverlay').style.display = 'flex';
+            };
+
+            const handleFiles = (files) => {
+                closeSelectionTypeDialog();
+                if (files.length > 0) {
+                    selectedFiles = Array.from(files);
+                    const chip = document.getElementById('selectedFileChip');
+                    const name = document.getElementById('selectedFileName');
+
+                    if (selectedFiles.length === 1) {
+                        name.innerText = selectedFiles[0].name;
+                    } else {
+                        name.innerText = `${selectedFiles.length} items`;
+                    }
+
+                    chip.style.display = 'flex';
+                    document.getElementById('qrShareBtn').style.display = 'flex';
+                }
+            };
+
+            fileInput.onchange = (e) => handleFiles(e.target.files);
+            folderInput.onchange = (e) => handleFiles(e.target.files);
+        }
+
+        function triggerFileInput(type) {
+            closeSelectionTypeDialog();
+            if (type === 'file') {
+                fileInput.click();
+            } else {
+                folderInput.click();
+            }
+        }
+
+        function closeSelectionTypeDialog() {
+            document.getElementById('selectionTypeOverlay').style.display = 'none';
+        }
+
+        function clearSelection() {
+            selectedFiles = [];
+            fileInput.value = '';
+            folderInput.value = '';
+            document.getElementById('selectedFileChip').style.display = 'none';
+            document.getElementById('qrShareBtn').style.display = 'none';
+            // No longer forcing colors here to keep it consistent with CSS
+            selectFileFab.style.backgroundColor = '';
+            selectFileFab.style.color = '';
+        }
+
+        function selectPeer(peerId) {
+            if (selectedFiles.length === 0) {
+                alert(t('initial_prompt'));
+                return;
+            }
+            closeSelectionTypeDialog();
+            // Also force it closed visually just in case
+            document.getElementById('selectionTypeOverlay').style.display = 'none';
+            startSendRequest(peerId);
+        }
+
+        function startSendRequest(peerId) {
+            if (currentConnection && currentConnection.peer !== peerId) {
+                currentConnection.close();
+                currentConnection = null;
+            }
+
+            hasPressedStart = false;
+            otherHasPressedStart = false;
+            transferOverlay.classList.remove('modal-waiting');
+            transferOverlay.style.display = 'flex';
+            document.body.classList.add('modal-open');
+            transferStatus.innerText = t('connecting');
+            progressBar().style.width = '0%';
+            document.getElementById('transferProgressText').innerText = '0%';
+            document.getElementById('transferSpeed').innerText = '0 KB/s';
+            document.getElementById('transferActions').style.display = 'none';
+            document.getElementById('transferTitle').innerText = t('sending');
+
+            transferRole = 'sender';
+
+            // If already connected and open, just send request
+            if (currentConnection && currentConnection.peer === peerId && currentConnection.open) {
+                sendRequest(currentConnection);
+                return;
+            }
+
+            const conn = myPeer.connect(peerId, { reliable: true });
+            currentConnection = conn;
+
+            // Timeout if connection takes too long (15s)
+            const connTimeout = setTimeout(() => {
+                if (!conn.open) {
+                    alert(t('error_connection') + ': Timeout');
+                    transferOverlay.style.display = 'none';
+                    conn.close();
+                }
+            }, 15000);
+
+            conn.on('open', () => {
+                clearTimeout(connTimeout);
+                sendRequest(conn);
+            });
+
+            conn.on('data', (data) => {
+                handleConnectionData(conn, data);
+            });
+
+            conn.on('error', (err) => {
+                clearTimeout(connTimeout);
+                alert(t('error_connection') + ': ' + err);
+                transferOverlay.style.display = 'none';
+            });
+
+            conn.on('close', () => {
+                if (transferStatus.innerText.indexOf('Success') === -1 && transferOverlay.style.display === 'flex') {
+                }
+            });
+        }
+
+        function sendRequest(conn) {
+            if (selectedFiles.length === 0) return;
+            transferStatus.innerText = t('requesting');
+            conn.send({
+                type: 'request',
+                files: selectedFiles.map(f => ({ name: f.name, size: f.size, type: f.type })),
+                senderName: myName
+            });
+        }
+
+        function handleIncomingConnection(conn) {
+            if (currentConnection && currentConnection.open && currentConnection.peer === conn.peer) {
+                return;
+            }
+            currentConnection = conn;
+            transferRole = 'receiver';
+            conn.on('data', (data) => handleConnectionData(conn, data));
+        }
+
+        function handleConnectionData(conn, data) {
+            if (currentConnection !== conn) return;
+
+            if (data.type === 'request') {
+                hasPressedStart = false;
+                otherHasPressedStart = false;
+                transferOverlay.classList.remove('modal-waiting');
+                document.body.classList.add('modal-open');
+                pendingTransfer = data;
+
+                let filesHtml = '';
+                if (data.files.length === 1) {
+                    filesHtml = `<strong>${data.files[0].name}</strong> (${formatBytes(data.files[0].size)})`;
+                } else {
+                    filesHtml = `<strong>${data.files.length} items</strong> (${formatBytes(data.files.reduce((a, b) => a + b.size, 0))})`;
+                }
+
+                document.getElementById('incomingContent').innerHTML = `
+                    <div style="display:flex; flex-direction:column; align-items:center; gap:16px;">
+                        <span class="material-icons-round" style="font-size:48px; color:var(--md-sys-color-primary);">description</span>
+                        <div style="text-align:center;">
+                            <strong>${data.senderName}</strong> ${t('wants_to_send')}<br>
+                            ${filesHtml}
+                        </div>
+                    </div>
+                `;
+                incomingOverlay.style.display = 'flex';
+            } else if (data.type === 'response') {
+                if (data.accepted) {
+                    hasPressedStart = true;
+                    otherHasPressedStart = true;
+                    transferOverlay.classList.remove('modal-waiting');
+                    document.getElementById('transferActions').style.display = 'none';
+                    beginChunkedSend();
+                } else {
+                    alert(t('decline'));
+                    transferOverlay.style.display = 'none';
+                    document.body.classList.remove('modal-open');
+                    resetTransferState();
+                }
+            } else if (data.type === 'start') {
+                otherHasPressedStart = true;
+                if (hasPressedStart) transferOverlay.classList.remove('modal-waiting');
+                checkAllStarted();
+            } else if (data.type === 'cancel') {
+                alert(t('cancelled'));
+                transferOverlay.classList.remove('modal-waiting');
+                transferOverlay.style.display = 'none';
+                incomingOverlay.style.display = 'none';
+                resetTransferState();
+            } else if (data.type === 'file-chunk') {
+                handleFileChunk(conn, data);
+                transferOverlay.classList.remove('modal-waiting');
+            } else if (data.type === 'next-chunk') {
+                if (chunkAckResolver) {
+                    chunkAckResolver();
+                    chunkAckResolver = null;
+                }
+            } else if (data.type === 'transfer-progress') {
+                // Update sender UI with receiver's ACTUAL speed and progress
+                updateProgress(data.progress, data.bytes, data.startTime, data.speed);
+            } else if (data.type === 'transfer-complete') {
+                transferStatus.innerText = t('sent_success');
+                playAirdropAnimation();
+                setTimeout(() => {
+                    transferOverlay.style.display = 'none';
+                    document.body.classList.remove('modal-open');
+                    clearSelection();
+                    resetTransferState();
+                }, 500);
+            }
+        }
+
+        function respondToRequest(accepted) {
+            incomingOverlay.style.display = 'none';
+            if (!accepted) document.body.classList.remove('modal-open');
+            if (!currentConnection) return;
+
+            if (accepted) {
+                // RESET states for new transfer
+                resetTransferState();
+                progressBar().style.width = '0%';
+                document.getElementById('transferProgressText').innerText = '0%';
+                document.getElementById('transferSpeed').innerText = '0 KB/s';
+
+                transferOverlay.style.display = 'flex';
+                transferStatus.innerText = t('receiving');
+                document.getElementById('transferTitle').innerText = t('ready_to_receive');
+                document.getElementById('transferActions').style.display = 'none';
+
+                hasPressedStart = true;
+                otherHasPressedStart = true;
+                currentConnection.send({ type: 'response', accepted: true });
+            } else {
+                currentConnection.send({ type: 'response', accepted: false });
+                currentConnection.close();
+            }
+        }
+
+        function startTransfer() {
+            hasPressedStart = true;
+            document.getElementById('startBtn').disabled = true;
+            if (!otherHasPressedStart) {
+                transferStatus.innerText = t('waiting_other');
+                transferOverlay.classList.add('modal-waiting');
+            }
+            currentConnection.send({ type: 'start' });
+            checkAllStarted();
+        }
+
+        function checkAllStarted() {
+            if (hasPressedStart && otherHasPressedStart) {
+                transferOverlay.classList.remove('modal-waiting');
+                document.getElementById('transferActions').style.display = 'none';
+                playAirdropAnimation();
+                if (transferRole === 'sender') beginChunkedSend();
+                else {
+                    transferStatus.innerText = t('receiving');
+                    resetTransferState();
+                }
+            }
+        }
+
+        let chunkAckResolver = null;
+        async function beginChunkedSend() {
+            transferStatus.innerText = t('sending');
+            const CHUNK_SIZE = 64 * 1024; // 64KB chunks for Firefox/Safari compatibility
+            const startTime = Date.now();
+            const totalSize = selectedFiles.reduce((sum, f) => sum + f.size, 0);
+            let totalUploadedBeforeCurrentFile = 0;
+
+            transferStartTime = startTime;
+            receivedStartTime = startTime;
+
+            for (let i = 0; i < selectedFiles.length; i++) {
+                const file = selectedFiles[i];
+                let offset = 0;
+
+                document.getElementById('transferTitle').innerText = `${t('sending')} (${i + 1}/${selectedFiles.length})`;
+                document.getElementById('transferStatus').innerText = file.name;
+
+                while (offset < file.size) {
+                    if (!currentConnection || !currentConnection.open) throw new Error('Connection lost');
+
+                    const slice = file.slice(offset, offset + CHUNK_SIZE);
+                    const chunkData = await slice.arrayBuffer();
+                    const currentOffset = offset;
+                    offset += chunkData.byteLength;
+
+                    currentConnection.send({
+                        type: 'file-chunk',
+                        data: chunkData,
+                        offset: currentOffset,
+                        fileIndex: i,
+                        isLastChunk: offset >= file.size,
+                        isLastFile: (i === selectedFiles.length - 1) && (offset >= file.size)
+                    });
+
+                    // WAIT for receiver to acknowledge this chunk
+                    await new Promise(resolve => {
+                        chunkAckResolver = resolve;
+                        setTimeout(() => { if (chunkAckResolver === resolve) { chunkAckResolver = null; resolve(); } }, 5000);
+                    });
+
+                    // Local calculation for cumulative progress
+                    const buffered = currentConnection.dataChannel ? currentConnection.dataChannel.bufferedAmount : 0;
+                    const realUploadedInCurrentFile = Math.max(0, offset - buffered);
+                    const cumulativeUploaded = totalUploadedBeforeCurrentFile + realUploadedInCurrentFile;
+                    updateProgress(Math.min(99, (cumulativeUploaded / totalSize) * 100), cumulativeUploaded, startTime);
+                }
+                totalUploadedBeforeCurrentFile += file.size;
+            }
+
+            // Wait for data channel to clear
+            transferStatus.innerText = 'Finishing...';
+            while (currentConnection && currentConnection.open && currentConnection.dataChannel && currentConnection.dataChannel.bufferedAmount > 0) {
+                const buffered = currentConnection.dataChannel.bufferedAmount;
+                const cumulativeUploaded = totalSize - buffered;
+                updateProgress(Math.min(99.9, (cumulativeUploaded / totalSize) * 100), cumulativeUploaded, startTime);
+                await new Promise(r => setTimeout(r, 100));
+            }
+        }
+
+        let receivedFilesBuffers = []; // Array of arrays of chunks
+        let currentFileIndex = -1;
+        let receivedSize = 0;
+        let totalReceivedForCurrentFile = 0;
+        let lastUiUpdate = 0;
+        let transferStartTime = null;
+
+        function handleFileChunk(conn, data) {
+            if (!transferStartTime) transferStartTime = Date.now();
+
+            // If it's a new file index, initialize its buffer
+            if (data.fileIndex !== currentFileIndex) {
+                currentFileIndex = data.fileIndex;
+                receivedFilesBuffers[currentFileIndex] = [];
+                totalReceivedForCurrentFile = 0;
+
+                const currentFileMeta = pendingTransfer.files[currentFileIndex];
+                transferStatus.innerText = `${t('receiving')} ${currentFileMeta.name}...`;
+                document.getElementById('transferTitle').innerText = `${t('receiving')} (${currentFileIndex + 1}/${pendingTransfer.files.length})`;
+            }
+
+            receivedFilesBuffers[currentFileIndex].push(data.data);
+
+            // ACK back to sender immediately so they can read the NEXT chunk from disk/memory
+            conn.send({ type: 'next-chunk' });
+
+            receivedSize += data.data.byteLength;
+            totalReceivedForCurrentFile += data.data.byteLength;
+
+            const totalSize = pendingTransfer.files.reduce((a, b) => a + b.size, 0);
+            const now = Date.now();
+            if (now - lastUiUpdate > 200 || data.isLastChunk) {
+                const percent = Math.min(100, (receivedSize / totalSize) * 100);
+                const elapsed = (now - transferStartTime) / 1000;
+                const currentSpeed = elapsed > 0 ? (receivedSize / elapsed) : 0;
+
+                updateProgress(percent, receivedSize, transferStartTime);
+
+                // Report ACTUAL receiver speed and progress back to sender
+                conn.send({
+                    type: 'transfer-progress',
+                    progress: percent,
+                    bytes: receivedSize,
+                    startTime: transferStartTime,
+                    speed: currentSpeed
+                });
+
+                lastUiUpdate = now;
+            }
+
+            if (data.isLastChunk) {
+                const currentFileMeta = pendingTransfer.files[currentFileIndex];
+                const blob = new Blob(receivedFilesBuffers[currentFileIndex]);
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = currentFileMeta.name;
+                a.click();
+
+                // Clear buffer for this file to save memory
+                receivedFilesBuffers[currentFileIndex] = null;
+
+                if (data.isLastFile) {
+                    transferStatus.innerText = t('received_success');
+                    playAirdropAnimation();
+
+                    // Acknowledge to sender that we've received everything
+                    conn.send({ type: 'transfer-complete' });
+
+                    setTimeout(() => {
+                        transferOverlay.style.display = 'none';
+                        document.body.classList.remove('modal-open');
+                        URL.revokeObjectURL(url);
+                        resetTransferState();
+                    }, 500);
+                }
+            }
+        }
+
+        function resetTransferState() {
+            hasPressedStart = false;
+            otherHasPressedStart = false;
+            receivedFilesBuffers = [];
+            currentFileIndex = -1;
+            receivedSize = 0;
+            transferStartTime = null;
+            lastUiUpdate = 0;
+        }
+
+        function updateProgress(percent, bytes, startTime, forcedSpeed) {
+            const pb = progressBar();
+            if (pb) pb.style.width = percent + '%';
+            document.getElementById('transferProgressText').innerText = Math.round(percent) + '%';
+
+            if (forcedSpeed !== undefined) {
+                document.getElementById('transferSpeed').innerText = formatBytes(forcedSpeed) + '/s';
+            } else if (startTime) {
+                const elapsed = (Date.now() - startTime) / 1000;
+                if (elapsed > 0) document.getElementById('transferSpeed').innerText = formatBytes(bytes / elapsed) + '/s';
+            }
+        }
+
+        function cancelTransfer() {
+            if (currentConnection && currentConnection.open) {
+                currentConnection.send({ type: 'cancel' });
+                setTimeout(() => {
+                    currentConnection.close();
+                    transferOverlay.classList.remove('modal-waiting');
+                    transferOverlay.style.display = 'none';
+                    document.body.classList.remove('modal-open');
+                    hasPressedStart = false;
+                    otherHasPressedStart = false;
+                }, 100);
+            } else {
+                transferOverlay.classList.remove('modal-waiting');
+                transferOverlay.style.display = 'none';
+                document.body.classList.remove('modal-open');
+                hasPressedStart = false;
+                otherHasPressedStart = false;
+            }
+        }
+
+        function playAirdropAnimation() {
+            const canvas = document.getElementById('airdropCanvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            let r = 245, g = 124, b = 0;
+            if (currentAccent && currentAccent.startsWith('#')) {
+                const hex = currentAccent.replace('#', '');
+                r = parseInt(hex.substring(0,2), 16) || r;
+                g = parseInt(hex.substring(2,4), 16) || g;
+                b = parseInt(hex.substring(4,6), 16) || b;
+            }
+
+            let start = null;
+            const duration = 3000;
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const maxRadius = Math.max(canvas.width, canvas.height); // Expand beyond screen
+
+            // Delays for concentric expanding rings (in milliseconds)
+            const ripples = [0, 400, 800];
+            const waveDuration = 2200; // Time in ms for a single ring to fully expand and fade
+
+            function animate(timestamp) {
+                if (!start) start = timestamp;
+                const timeElapsed = timestamp - start;
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                if (timeElapsed <= duration) {
+                    
+                    // Central glowing pulse
+                    const pulseIntensity = Math.abs(Math.sin((timeElapsed / 1000) * Math.PI)); // Pulses rhythmically
+                    const centerRadius = 80 + (pulseIntensity * 30);
+                    
+                    const centerGrad = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, centerRadius);
+                    centerGrad.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${pulseIntensity * 0.7})`);
+                    centerGrad.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+                    ctx.fillStyle = centerGrad;
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, centerRadius, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Expanding concentric ripples
+                    for (let delay of ripples) {
+                        if (timeElapsed > delay) {
+                            let rippleTime = timeElapsed - delay;
+                            if (rippleTime < waveDuration) {
+                                let rProgress = rippleTime / waveDuration; 
+                                
+                                // Expand outwards linearly or with slight ease-out
+                                const easeOut = 1 - Math.pow(1 - rProgress, 2);
+                                const radius = 60 + (maxRadius * easeOut);
+                                
+                                // Fade out cleanly before it vanishes
+                                const alpha = 1 - Math.pow(rProgress, 1.5);
+                                
+                                ctx.beginPath();
+                                ctx.arc(centerX, centerY, Math.max(1, radius), 0, Math.PI * 2);
+                                
+                                // Thick inner stroke edge creating the "wave" look
+                                ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${Math.max(0, alpha * 0.5)})`;
+                                ctx.lineWidth = 120 * (1 - rProgress) + 15; 
+                                ctx.stroke();
+
+                                // Subtle faint internal fill
+                                ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${Math.max(0, alpha * 0.15)})`;
+                                ctx.fill();
+                            }
+                        }
+                    }
+
+                    requestAnimationFrame(animate);
+                } else {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                }
+            }
+            requestAnimationFrame(animate);
+        }
+
+        function roundRect(ctx, x, y, width, height, radius) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+        }
+
+        function formatBytes(bytes, decimals = 2) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024; const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        }
+
+
+
+        function checkUrlForPeer() {
+            const params = new URLSearchParams(window.location.search);
+            const senderId = params.get('p');
+            if (senderId) {
+                const checkReady = setInterval(() => {
+                    if (myId) {
+                        clearInterval(checkReady);
+                        transferRole = 'receiver';
+                        const conn = myPeer.connect(senderId);
+                        currentConnection = conn;
+                        transferOverlay.style.display = 'flex';
+                        transferStatus.innerText = t('connecting');
+                        conn.on('open', () => { conn.send({ type: 'link-ping' }); });
+                        conn.on('data', (data) => handleConnectionData(conn, data));
+                        conn.on('error', () => { alert(t('error_link')); transferOverlay.style.display = 'none'; });
+                    }
+                }, 500);
+            }
+        }
+
+        // --- OFFLINE QR TRANSFER LOGIC ---
+        class OfflineDataConnection {
+            constructor(channel, peerId) {
+                this.peer = peerId;
+                this.dataChannel = channel;
+                this.open = channel.readyState === 'open';
+                this.channel = channel;
+                this.channel.binaryType = 'arraybuffer';
+                this.callbacks = { data: [], open: [], close: [], error: [] };
+
+                this.channel.onopen = () => { this.open = true; this.emit('open', this); };
+                this.channel.onclose = () => { this.open = false; this.emit('close'); };
+                this.channel.onerror = (e) => this.emit('error', e);
+
+                let pendingMeta = null;
+                this.channel.onmessage = (e) => {
+                    if (typeof e.data === 'string') {
+                        try {
+                            const parsed = JSON.parse(e.data);
+                            if (parsed.type === 'file-chunk-meta') {
+                                pendingMeta = parsed;
+                            } else {
+                                this.emit('data', parsed);
+                            }
+                        } catch(err) { console.warn("Raw parse err", err); }
+                    } else if (e.data instanceof ArrayBuffer) {
+                        if (pendingMeta) {
+                            this.emit('data', { ...pendingMeta, type: 'file-chunk', data: e.data });
+                            pendingMeta = null;
+                        }
+                    }
+                };
+            }
+            send(data) {
+                if (!this.open) return;
+                if (data.type === 'file-chunk') {
+                    const { data: buffer, ...meta } = data;
+                    meta.type = 'file-chunk-meta';
+                    this.channel.send(JSON.stringify(meta));
+                    this.channel.send(buffer);
+                } else {
+                    this.channel.send(JSON.stringify(data));
+                }
+            }
+            close() { this.channel.close(); }
+            on(event, cb) { this.callbacks[event].push(cb); }
+            emit(event, payload) { this.callbacks[event].forEach(cb => cb(payload)); }
+        }
+
+        async function compressString(str) {
+            const stream = new Blob([str]).stream();
+            const compressedStream = stream.pipeThrough(new CompressionStream('deflate-raw'));
+            const compressedResponse = await new Response(compressedStream).arrayBuffer();
+            let binary = '';
+            const bytes = new Uint8Array(compressedResponse);
+            for (let i = 0; i < bytes.byteLength; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return btoa(binary);
+        }
+
+        async function decompressString(base64str) {
+            const binaryStr = atob(base64str);
+            const bytes = new Uint8Array(binaryStr.length);
+            for (let i = 0; i < binaryStr.length; i++) {
+                bytes[i] = binaryStr.charCodeAt(i);
+            }
+            const stream = new Blob([bytes]).stream();
+            const decompressedStream = stream.pipeThrough(new DecompressionStream('deflate-raw'));
+            return await new Response(decompressedStream).text();
+        }
+
+        let offlinePeerConnection = null;
+        let qrScannerInstance = null;
+
+        async function hostOfflineQR() {
+            if (selectedFiles.length === 0) return;
+
+            document.getElementById('qrDisplayOverlay').style.display = 'flex';
+            document.getElementById('qrcodeDisplay').innerHTML = '<div style="padding:20px;">Generating Security Keys...</div>';
+            document.getElementById('qrDisplayTitle').innerText = 'Hosting Offline...';
+            document.getElementById('scanAnswerBtn').style.display = 'none';
+
+            offlinePeerConnection = new RTCPeerConnection({ iceServers: [] });
+
+            const dataChannel = offlinePeerConnection.createDataChannel('baidrop-offline-channel', { negotiated: true, id: 0 });
+            const customConn = new OfflineDataConnection(dataChannel, 'offline-receiver');
+
+            currentConnection = customConn;
+            transferRole = 'sender';
+
+            customConn.on('open', () => {
+                closeQRDisplay();
+                startSendRequest(customConn.peer);
+            });
+            customConn.on('data', (data) => handleConnectionData(customConn, data));
+
+            const offer = await offlinePeerConnection.createOffer();
+            await offlinePeerConnection.setLocalDescription(offer);
+
+            // Wait a brief moment for local ICE candidate to be collected (LAN IPs) since STUN is empty
+            await new Promise(r => setTimeout(r, 600));
+
+            const offerData = JSON.stringify(offlinePeerConnection.localDescription);
+            const compressedOffer = await compressString(offerData);
+
+            document.getElementById('qrcodeDisplay').innerHTML = '';
+            new QRCode(document.getElementById('qrcodeDisplay'), {
+                text: 'BD_OFFER:' + compressedOffer,
+                width: 256,
+                height: 256,
+                correctLevel: QRCode.CorrectLevel.L
+            });
+            
+            document.getElementById('qrDisplayStatus').innerText = 'Ask the receiver to tap the Scanner icon and scan this code.\n\nThen, tap "Scan Answer" below to scan the code they generate.';
+            document.getElementById('scanAnswerBtn').style.display = 'block';
+        }
+
+        function scanOfflineQR() {
+            document.getElementById('qrScannerOverlay').style.display = 'flex';
+            document.getElementById('qrScannerStatus').innerText = 'Starting camera...';
+
+            if (!qrScannerInstance) {
+                qrScannerInstance = new Html5Qrcode("qrReader");
+            }
+
+            qrScannerInstance.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: { width: 250, height: 250 } },
+                async (decodedText) => {
+                    document.getElementById('qrScannerStatus').innerText = 'Code scanned, processing...';
+                    await handleOfflineQRScanned(decodedText);
+                },
+                (err) => { /* ignore standard read failures */ }
+            ).catch(err => {
+                document.getElementById('qrScannerStatus').innerText = 'Camera access denied or failed.';
+            });
+        }
+
+        function closeQRScanner() {
+            if (qrScannerInstance && qrScannerInstance.isScanning) {
+                qrScannerInstance.stop().catch(() => { });
+            }
+            document.getElementById('qrScannerOverlay').style.display = 'none';
+        }
+
+        function closeQRDisplay() {
+            document.getElementById('qrDisplayOverlay').style.display = 'none';
+        }
+
+        async function handleOfflineQRScanned(text) {
+            try {
+                if (text.startsWith('BD_OFFER:')) {
+                    // Receiver scanning Sender's Offer
+                    closeQRScanner();
+                    
+                    const compressedSDP = text.replace('BD_OFFER:', '');
+                    const sdpString = await decompressString(compressedSDP);
+                    const offerDesc = JSON.parse(sdpString);
+
+                    offlinePeerConnection = new RTCPeerConnection({ iceServers: [] });
+                    const dataChannel = offlinePeerConnection.createDataChannel('baidrop-offline-channel', { negotiated: true, id: 0 });
+                    const customConn = new OfflineDataConnection(dataChannel, 'offline-sender');
+
+                    currentConnection = customConn;
+                    transferRole = 'receiver';
+                    customConn.on('data', (data) => handleConnectionData(customConn, data));
+
+                    await offlinePeerConnection.setRemoteDescription(offerDesc);
+                    const answer = await offlinePeerConnection.createAnswer();
+                    await offlinePeerConnection.setLocalDescription(answer);
+
+                    await new Promise(r => setTimeout(r, 600)); // Gather local ICE
+
+                    const answerData = JSON.stringify(offlinePeerConnection.localDescription);
+                    const compressedAnswer = await compressString(answerData);
+
+                    // Show Answer QR for Sender to scan
+                    document.getElementById('qrDisplayOverlay').style.display = 'flex';
+                    document.getElementById('qrDisplayTitle').innerText = 'Answer Generated';
+                    document.getElementById('qrcodeDisplay').innerHTML = '';
+                    new QRCode(document.getElementById('qrcodeDisplay'), {
+                        text: 'BD_ANSWER:' + compressedAnswer,
+                        width: 256,
+                        height: 256,
+                        correctLevel: QRCode.CorrectLevel.L
+                    });
+                    document.getElementById('qrDisplayStatus').innerText = 'Ask the Host to scan this connection Answer.';
+                    document.getElementById('scanAnswerBtn').style.display = 'none';
+
+                } else if (text.startsWith('BD_ANSWER:')) {
+                    // Sender scanning Receiver's Answer
+                    closeQRScanner();
+                    const compressedSDP = text.replace('BD_ANSWER:', '');
+                    const sdpString = await decompressString(compressedSDP);
+                    const answerDesc = JSON.parse(sdpString);
+
+                    await offlinePeerConnection.setRemoteDescription(answerDesc);
+                    document.getElementById('qrDisplayOverlay').style.display = 'none';
+                    // The connection will snap open and trigger `customConn.on('open')`
+                } else {
+                    alert('Invalid Bái Drop QR Code.');
+                    closeQRScanner();
+                }
+            } catch (err) {
+                console.error("QR Processing Error:", err);
+                alert('Failed to process QR Code. It might be corrupted.');
+                closeQRScanner();
+            }
+        }
+
+        window.onload = init;
+    </script>
+</body>
+
+</html>
