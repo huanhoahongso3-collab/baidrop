@@ -759,6 +759,10 @@
                         onclick="editName()">edit</span>
                 </div>
                 <div class="device-id" id="myId">---</div>
+                <div class="share-link-container" style="margin-top: 12px; display:inline-flex; cursor:pointer;" onclick="copyMyLink()">
+                    <span class="material-icons-round" style="font-size:16px;">content_copy</span>
+                    <span class="share-link-text">Copy Link</span>
+                </div>
             </div>
         </div>
 
@@ -826,7 +830,7 @@
             </div>
             <div class="modal-actions">
                 <button class="btn btn-text no-shade" onclick="closeQRDisplay()">Cancel</button>
-                <button class="btn btn-filled" id="scanAnswerBtn" onclick="scanOfflineQR()" style="display:none;">Scan Answer</button>
+                <button class="btn btn-filled" id="scanAnswerBtn" onclick="closeQRDisplay(); scanOfflineQR();" style="display:none;">Scan Answer</button>
             </div>
         </div>
     </div>
@@ -1122,6 +1126,9 @@
         let myName = myNameValue;
         let myAvatar = getSetting('baidrop-avatar') || 'airdrop';
         let myId = getSetting('baidrop-id') || null;
+        if (!myId) {
+            myId = Math.random().toString(36).substring(2, 8); // Short hash
+        }
         let myIpHash = 'global';
         let peers = new Map();
         let currentConnection = null;
@@ -2138,6 +2145,15 @@
             }
         }
 
+        function copyMyLink() {
+            const url = window.location.origin + window.location.pathname + '?p=' + myId;
+            navigator.clipboard.writeText(url).then(() => {
+                alert(t('link_copied'));
+            }).catch(err => {
+                alert("Failed to copy link: " + err);
+            });
+        }
+
         // --- OFFLINE QR TRANSFER LOGIC ---
         class OfflineDataConnection {
             constructor(channel, peerId) {
@@ -2264,17 +2280,27 @@
                 qrScannerInstance = new Html5Qrcode("qrReader");
             }
 
-            qrScannerInstance.start(
-                { facingMode: "environment" },
-                { fps: 10, qrbox: { width: 250, height: 250 } },
-                async (decodedText) => {
-                    document.getElementById('qrScannerStatus').innerText = 'Code scanned, processing...';
-                    await handleOfflineQRScanned(decodedText);
-                },
-                (err) => { /* ignore standard read failures */ }
-            ).catch(err => {
-                document.getElementById('qrScannerStatus').innerText = 'Camera access denied or failed.';
-            });
+            const startScanner = (facingModeOpt) => {
+                qrScannerInstance.start(
+                    facingModeOpt,
+                    { fps: 10, qrbox: { width: 250, height: 250 } },
+                    async (decodedText) => {
+                        document.getElementById('qrScannerStatus').innerText = 'Code scanned, processing...';
+                        await handleOfflineQRScanned(decodedText);
+                    },
+                    (err) => { /* ignore standard read failures */ }
+                ).catch(err => {
+                    // If preferred environment strictly fails, fallback to user (for laptops)
+                    if (facingModeOpt.facingMode && facingModeOpt.facingMode.exact) {
+                        qrScannerInstance.stop().catch(()=>{});
+                        startScanner({ facingMode: "user" });
+                    } else {
+                        document.getElementById('qrScannerStatus').innerText = 'Camera access denied or failed.';
+                    }
+                });
+            };
+
+            startScanner({ facingMode: { exact: "environment" } });
         }
 
         function closeQRScanner() {
