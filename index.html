@@ -2473,32 +2473,23 @@
             const offer = await offlinePeerConnection.createOffer();
             await offlinePeerConnection.setLocalDescription(offer);
 
-            // Wait a bit for ICE gathering (local only, usually fast)
+            // Wait for ICE gathering
             await new Promise(r => setTimeout(r, 600));
 
-            const currentOffer = offlinePeerConnection.localDescription;
-            const minifiedOffer = { type: currentOffer.type, sdp: minifySDP(currentOffer.sdp) };
-            const offerData = JSON.stringify(minifiedOffer);
-
-            let offerString = '';
-            try {
-                const compressedOffer = await compressString(offerData);
-                offerString = 'BDO:' + compressedOffer;
-            } catch (err) { console.warn('Compression failed:', err); }
-
+            const offerData = JSON.stringify(offlinePeerConnection.localDescription);
             const shortId = Math.random().toString(36).substring(2, 8);
+            
             try {
-                // Also store full version in relay as fallback
-                const fullOfferData = JSON.stringify(offlinePeerConnection.localDescription);
                 await fetch('/api/relay', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'store_sdp', roomId: shortId, sdp: fullOfferData })
+                    body: JSON.stringify({ action: 'store_sdp', roomId: shortId, sdp: offerData })
                 });
-            } catch (e) { console.warn('Relay failed (expected if offline):', e); }
+            } catch (e) {
+                console.warn('Relay failed:', e);
+            }
 
-            currentOfflineString = (offerString && offerString.length < 1500) ?
-                (window.location.origin + window.location.pathname + '#o=' + offerString) :
-                (window.location.origin + window.location.pathname + '?offer=' + shortId);
+            // Using shorter search params for smallest possible QR
+            currentOfflineString = window.location.origin + window.location.pathname + '?o=' + shortId;
 
             document.getElementById('qrcodeDisplay').innerHTML = '';
             new QRCode(document.getElementById('qrcodeDisplay'), {
@@ -2565,7 +2556,7 @@
                     return;
                 }
 
-                if (text.includes('?offer=') || text.includes('#o=BDO:') || text.startsWith('BDO:') || text.startsWith('BD_OFFER:')) {
+                if (text.includes('?o=') || text.includes('?offer=') || text.includes('BDO:') || text.startsWith('BD_OFFER:')) {
                     closeQRScanner();
 
                     let sdpString = '';
@@ -2574,14 +2565,11 @@
                         const part = text.split(prefix)[1];
                         const decompressed = await decompressString(part);
                         const obj = JSON.parse(decompressed);
-                        // If it doesn't look like a full SDP, expand it
-                        if (obj.sdp && !obj.sdp.includes('\n')) {
-                            obj.sdp = expandSDP(obj.sdp);
-                        }
+                        if (obj.sdp && !obj.sdp.includes('\n')) obj.sdp = expandSDP(obj.sdp);
                         sdpString = JSON.stringify(obj);
                     } else {
-                        const url = new URL(text.replace('#o=', '?offer=')); // Normalize hash for URL parsing if needed
-                        const shortId = url.searchParams.get('offer');
+                        const url = new URL(text.replace('#o=', '?o='));
+                        const shortId = url.searchParams.get('o') || url.searchParams.get('offer');
                         const response = await fetch('/api/relay', {
                             method: 'POST', headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ action: 'get_sdp', roomId: shortId })
@@ -2609,32 +2597,20 @@
                     const answer = await offlinePeerConnection.createAnswer();
                     await offlinePeerConnection.setLocalDescription(answer);
 
-                    await new Promise(r => setTimeout(r, 600)); // Gather local ICE
+                    await new Promise(r => setTimeout(r, 600));
 
-                    const currentAnswer = offlinePeerConnection.localDescription;
-                    const minifiedAnswer = { type: currentAnswer.type, sdp: minifySDP(currentAnswer.sdp) };
-                    const answerData = JSON.stringify(minifiedAnswer);
-                    let answerString = '';
-                    try {
-                        const compressedAnswer = await compressString(answerData);
-                        answerString = 'BDA:' + compressedAnswer;
-                    } catch (err) { }
-
+                    const answerData = JSON.stringify(offlinePeerConnection.localDescription);
                     const ansId = Math.random().toString(36).substring(2, 8);
                     try {
-                        // Store full version in relay as fallback
-                        const fullAnswerData = JSON.stringify(offlinePeerConnection.localDescription);
                         await fetch('/api/relay', {
                             method: 'POST', headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ action: 'store_sdp', roomId: ansId, sdp: fullAnswerData })
+                            body: JSON.stringify({ action: 'store_sdp', roomId: ansId, sdp: answerData })
                         });
                     } catch (e) { }
 
-                    currentOfflineString = (answerString && answerString.length < 1500) ?
-                        (window.location.origin + window.location.pathname + '#a=' + answerString) :
-                        (window.location.origin + window.location.pathname + '?answer=' + ansId);
+                    currentOfflineString = window.location.origin + window.location.pathname + '?a=' + ansId;
 
-                    // Show Answer QR for Sender to scan
+                    // Show Answer QR
                     updateUI();
                     document.getElementById('qrDisplayOverlay').style.display = 'flex';
                     document.getElementById('qrDisplayTitle').innerText = t('answer_generated');
@@ -2648,8 +2624,7 @@
                     document.getElementById('qrDisplayStatus').innerText = t('qr_answer_help');
                     document.getElementById('scanAnswerBtn').style.display = 'none';
 
-                } else if (text.includes('?answer=') || text.includes('#a=BDA:') || text.startsWith('BDA:') || text.startsWith('BD_ANSWER:')) {
-                    // Sender scanning Receiver's Answer
+                } else if (text.includes('?a=') || text.includes('?answer=') || text.includes('BDA:') || text.startsWith('BD_ANSWER:')) {
                     closeQRScanner();
 
                     let sdpString = '';
@@ -2658,24 +2633,22 @@
                         const part = text.split(prefix)[1];
                         const decompressed = await decompressString(part);
                         const obj = JSON.parse(decompressed);
-                        if (obj.sdp && !obj.sdp.includes('\n')) {
-                            obj.sdp = expandSDP(obj.sdp);
-                        }
+                        if (obj.sdp && !obj.sdp.includes('\n')) obj.sdp = expandSDP(obj.sdp);
                         sdpString = JSON.stringify(obj);
                     } else {
-                        const url = new URL(text.replace('#a=', '?answer='));
-                        const ansId = url.searchParams.get('answer');
+                        const url = new URL(text.replace('#a=', '?a='));
+                        const ansId = url.searchParams.get('a') || url.searchParams.get('answer');
                         const response = await fetch('/api/relay', {
                             method: 'POST', headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ action: 'get_sdp', roomId: ansId })
                         });
                         const resData = await response.json();
-                        if (!resData.sdp) { alert('Answer expired.'); return; }
+                        if (!resData.sdp) throw new Error('Answer not found');
                         sdpString = resData.sdp;
                     }
                     const answerDesc = JSON.parse(sdpString);
                     await offlinePeerConnection.setRemoteDescription(answerDesc);
-                    // The connection will snap open and trigger `customConn.on('open')`
+                    closeQRDisplay();
                 } else {
                     alert('Invalid Bái Drop QR Code.');
                     closeQRScanner();
