@@ -2481,12 +2481,17 @@
             const ufrag = sdp.match(/a=ice-ufrag:(.+)/)?.[1]?.trim();
             const pwd = sdp.match(/a=ice-pwd:(.+)/)?.[1]?.trim();
             const fingerprint = sdp.match(/a=fingerprint:sha-256 (.+)/)?.[1]?.trim();
-            // Candidate line: a=candidate:[foundation] [comp] [proto] [priority] [ip] [port] typ host ...
-            const cand = sdp.match(/a=candidate:\S+ \d+ \S+ \d+ (\S+) (\d+) typ host/i);
-            const ip = cand?.[1];
-            const port = cand?.[2];
             
-            if (!ufrag || !pwd || !fingerprint || !ip || !port) return null;
+            // Candidate line: a=candidate:[foundation] [comp] [proto] [priority] [ip] [port] typ host ...
+            const candMatches = [...sdp.matchAll(/a=candidate:\S+ \d+ \S+ \d+ (\S+) (\d+) typ host/gi)];
+            let ip = '127.0.0.1';
+            let port = '9';
+            if (candMatches.length > 0) {
+                ip = candMatches[0][1];
+                port = candMatches[0][2];
+            }
+            
+            if (!ufrag || !pwd || !fingerprint) return null;
             // Format: ufrag|pwd|fingerprint|ip|port
             return `${ufrag}|${pwd}|${fingerprint}|${ip}|${port}`;
         }
@@ -2560,15 +2565,15 @@
                 };
             });
 
-            const sdpString = offlinePeerConnection.localDescription.sdp;
-            if (!sdpString.includes('a=candidate')) {
+            const tokens = packSDP(offlinePeerConnection.localDescription.sdp);
+            if (!tokens) {
                 alert('Connection stalled. Please check network/camera permissions.');
                 closeQRDisplay();
                 return;
             }
 
-            const compressedSdp = await compressString(JSON.stringify(offlinePeerConnection.localDescription));
-            currentOfflineString = "BDC:" + compressedSdp;
+            // BDS = Bái Drop Small
+            currentOfflineString = "BDS:" + tokens;
 
             document.getElementById('qrcodeDisplay').innerHTML = '';
             new QRCode(document.getElementById('qrcodeDisplay'), {
@@ -2674,8 +2679,11 @@
                     facingModeOpt,
                     { fps: 10 },
                     async (decodedText) => {
-                        if (!await handleSerialQRScanned(decodedText)) {
-                            document.getElementById('qrSerialScannerStatus').innerText = 'Scanning...';
+                        let res = await handleSerialQRScanned(decodedText);
+                        if (!res) {
+                            document.getElementById('qrSerialScannerStatus').innerText = 'Scanned unrecognized QR...';
+                        } else {
+                            document.getElementById('qrSerialScannerStatus').innerText = 'Scanning... Receiving Data';
                         }
                     },
                     (err) => { /* ignore */ }
@@ -2751,8 +2759,9 @@
                         };
                     });
 
-                    const ansCompressedSdp = await compressString(JSON.stringify(offlinePeerConnection.localDescription));
-                    currentOfflineString = "BCA:" + ansCompressedSdp;
+                    const ansTokens = packSDP(offlinePeerConnection.localDescription.sdp);
+                    if (!ansTokens) throw new Error('Cannot generate answer key');
+                    currentOfflineString = "BDA:" + ansTokens;
 
                     // Show Answer QR
                     updateUI();
@@ -2761,8 +2770,8 @@
                     document.getElementById('qrcodeDisplay').innerHTML = '';
                     new QRCode(document.getElementById('qrcodeDisplay'), {
                         text: currentOfflineString,
-                        width: 350,
-                        height: 350,
+                        width: 256,
+                        height: 256,
                         correctLevel: QRCode.CorrectLevel.L
                     });
                     document.getElementById('qrDisplayStatus').innerText = t('qr_answer_help');
@@ -3257,7 +3266,7 @@
             try {
                 const compressed = await compressFile(file);
                 const base64 = uint8ArrayToBase64(compressed);
-                const chunkSize = 400; 
+                const chunkSize = 200; 
                 qrSerialChunks = [];
                 const total = Math.ceil(base64.length / chunkSize);
                 const filename = encodeURIComponent(file.name);
@@ -3289,8 +3298,8 @@
             container.innerHTML = '';
             new QRCode(container, {
                 text: qrSerialChunks[qrSerialIndex],
-                width: 350,
-                height: 350,
+                width: 250,
+                height: 250,
                 correctLevel: QRCode.CorrectLevel.L
             });
             document.getElementById('qrSerialProgress').innerText = `Block ${qrSerialIndex + 1} / ${qrSerialChunks.length}`;
@@ -3342,13 +3351,14 @@
         async function handleSerialQRScanned(content) {
             if (!content.startsWith('QS:')) return false;
             
-            const parts = content.split(':');
-            if (parts.length < 5) return false;
+            const filenameRegex = /^QS:([^:]+):(\d+):(\d+):(.*)$/;
+            const match = content.match(filenameRegex);
+            if (!match) return false;
             
-            const filename = decodeURIComponent(parts[1]);
-            const total = parseInt(parts[2]);
-            const index = parseInt(parts[3]);
-            const data = parts.slice(4).join(':');
+            const filename = decodeURIComponent(match[1]);
+            const total = parseInt(match[2]);
+            const index = parseInt(match[3]);
+            const data = match[4];
 
             if (!qrReceiveData.active || qrReceiveData.filename !== filename) {
                 // New file or session
