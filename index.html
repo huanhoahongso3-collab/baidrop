@@ -94,16 +94,17 @@
                 --md-sys-color-background: var(--md-sys-color-surface);
             }
 
-            .device-card {
+            :root:not([data-theme="light"]) .device-card {
                 color: #ffffff !important;
             }
 
-            .device-name, .device-id {
+            :root:not([data-theme="light"]) .device-name, 
+            :root:not([data-theme="light"]) .device-id {
                 color: #ffffff !important;
                 opacity: 1 !important;
             }
 
-            .peer-avatar.material-icons-round {
+            :root:not([data-theme="light"]) .peer-avatar.material-icons-round {
                 color: var(--md-sys-color-primary);
             }
         }
