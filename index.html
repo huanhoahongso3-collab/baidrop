@@ -1008,13 +1008,16 @@
         </div>
     </div>
 
-    <!-- Overlay: QR Serial Receiver -->
-    <div class="overlay" id="qrSerialReceiveOverlay">
+    <!-- Overlay: QR Serial Scanner / Receiver -->
+    <div class="overlay" id="qrSerialScannerOverlay">
         <div class="modal">
-            <div class="modal-title">Receiving via QR</div>
+            <div class="modal-title" data-t="receive_qr">Receive via QR</div>
             <div class="modal-content">
-                <div id="qrSerialReceiveFilename" style="font-weight:bold; text-align:center; margin-bottom:8px; word-break: break-all;"></div>
-                <div id="qrSerialReceiveProgress" style="text-align:center; font-size:14px;">Block 0 / 0</div>
+                <div id="qrSerialReader" style="width:100%; max-width:300px; min-height:250px; background-color:#000; border-radius:12px; overflow:hidden; margin:0 auto 16px;"></div>
+                <div id="qrSerialScannerStatus" style="font-size:14px; color:var(--md-sys-color-primary); text-align:center; margin-bottom:8px;"></div>
+                
+                <div id="qrSerialReceiveFilename" style="font-weight:bold; text-align:center; margin-bottom:8px; word-break: break-all;">Waiting for first QR...</div>
+                <div id="qrSerialReceiveProgress" style="text-align:center; font-size:14px;">Block 0 / ?</div>
                 <div class="progress-container" style="margin-top:12px;">
                     <div class="progress-bar" id="qrSerialReceiveProgressBar" style="width: 0%;"></div>
                 </div>
@@ -2599,20 +2602,9 @@
             }
         }
 
-        let qrScannerTask = 'connection'; // 'connection' or 'serial'
-        let startScannerWithFacingMode = null;
+        let startScannerWithFacingMode = null; 
 
         function scanOfflineQR() {
-            qrScannerTask = 'connection';
-            _openScannerUI();
-        }
-
-        function scanSerialQR() {
-            qrScannerTask = 'serial';
-            _openScannerUI();
-        }
-
-        function _openScannerUI() {
             updateUI();
             document.getElementById('qrScannerOverlay').style.display = 'flex';
             document.getElementById('qrScannerStatus').innerText = t('starting_camera');
@@ -2630,18 +2622,19 @@
                     { fps: 10, qrbox: { width: 250, height: 250 } },
                     async (decodedText) => {
                         document.getElementById('qrScannerStatus').innerText = 'Code scanned, processing...';
-                        await _handleScannedText(decodedText);
+                        if (decodedText.startsWith('QS:')) {
+                            document.getElementById('qrScannerStatus').innerText = 'This is a file QR. Please use "Receive via QR".';
+                            return;
+                        }
+                        await handleOfflineQRScanned(decodedText);
                     },
-                    (err) => { /* ignore */ }
+                    (err) => { /* ignore standard read failures */ }
                 ).then(() => {
                     document.getElementById('qrScannerStatus').innerText = t('scanner_active');
-                    if (qrScannerTask === 'serial') {
-                        document.getElementById('qrScannerStatus').innerText += ' (File Transfer Mode)';
-                    }
                 }).catch(err => {
                     if (facingModeOpt.facingMode === "environment") {
-                        try { qrScannerInstance.clear(); } catch (e) { }
-                        qrScannerInstance = new Html5Qrcode("qrReader");
+                        try { qrScannerInstance.clear(); } catch (e) { } 
+                        qrScannerInstance = new Html5Qrcode("qrReader"); 
                         startScannerWithFacingMode("user");
                     } else {
                         document.getElementById('qrScannerStatus').innerText = 'Camera fail: ' + (err.message || err);
@@ -2652,25 +2645,53 @@
             startScannerWithFacingMode(currentFacingMode);
         }
 
-        async function _handleScannedText(text) {
-            if (!text) return;
-            text = text.trim();
+        let qrSerialScannerInstance = null;
+        let startSerialScannerWithFacingMode = null;
 
-            if (qrScannerTask === 'serial') {
-                if (await handleSerialQRScanned(text)) {
-                    // Handled
-                } else {
-                    document.getElementById('qrScannerStatus').innerText = 'Invalid File QR. Try scanning the sender screen.';
-                }
-                return;
+        function scanSerialQR() {
+            updateUI();
+            document.getElementById('qrSerialScannerOverlay').style.display = 'flex';
+            document.body.classList.add('modal-open');
+            document.getElementById('qrSerialScannerStatus').innerText = t('starting_camera');
+
+            if (!qrSerialScannerInstance) {
+                qrSerialScannerInstance = new Html5Qrcode("qrSerialReader");
             }
 
-            // Connection Task
-            if (text.startsWith('QS:')) {
-                document.getElementById('qrScannerStatus').innerText = 'This is a file QR. Please use "Receive via QR".';
-                return;
-            }
-            await handleOfflineQRScanned(text);
+            // Reset UI
+            document.getElementById('qrSerialReceiveFilename').innerText = 'Waiting for first QR...';
+            document.getElementById('qrSerialReceiveProgress').innerText = 'Block 0 / ?';
+            document.getElementById('qrSerialReceiveProgressBar').style.width = '0%';
+            qrReceiveData.active = false;
+            qrReceiveData.chunks.clear();
+
+            startSerialScannerWithFacingMode = (facingModeStr) => {
+                const facingModeOpt = { facingMode: facingModeStr };
+                currentFacingMode = facingModeStr;
+
+                qrSerialScannerInstance.start(
+                    facingModeOpt,
+                    { fps: 10, qrbox: { width: 250, height: 250 } },
+                    async (decodedText) => {
+                        if (!await handleSerialQRScanned(decodedText)) {
+                            document.getElementById('qrSerialScannerStatus').innerText = 'Scanning...';
+                        }
+                    },
+                    (err) => { /* ignore */ }
+                ).then(() => {
+                    document.getElementById('qrSerialScannerStatus').innerText = 'Scanner active (File Transfer Mode)';
+                }).catch(err => {
+                    if (facingModeOpt.facingMode === "environment") {
+                        try { qrSerialScannerInstance.clear(); } catch (e) { }
+                        qrSerialScannerInstance = new Html5Qrcode("qrSerialReader");
+                        startSerialScannerWithFacingMode("user");
+                    } else {
+                        document.getElementById('qrSerialScannerStatus').innerText = 'Camera fail: ' + (err.message || err);
+                    }
+                });
+            };
+
+            startSerialScannerWithFacingMode(currentFacingMode);
         }
 
         function closeQRScanner() {
@@ -3274,9 +3295,7 @@
                     chunks: new Map(),
                     active: true
                 };
-                document.getElementById('qrSerialReceiveOverlay').style.display = 'flex';
-                document.getElementById('qrSerialReceiveFilename').innerText = filename;
-                document.body.classList.add('modal-open');
+                document.getElementById('qrSerialReceiveFilename').innerText = `Receiving: ${filename}`;
             }
 
             if (!qrReceiveData.chunks.has(index)) {
@@ -3317,16 +3336,21 @@
             a.download = filename;
             a.click();
             URL.revokeObjectURL(url);
-            
-            document.getElementById('qrSerialReceiveOverlay').style.display = 'none';
+            document.getElementById('qrSerialScannerOverlay').style.display = 'none';
             document.body.classList.remove('modal-open');
+            if (qrSerialScannerInstance && qrSerialScannerInstance.isScanning) {
+                qrSerialScannerInstance.stop().catch(() => { });
+            }
             alert(t('received_success'));
         }
 
         function cancelQRSerialReceive() {
             qrReceiveData.active = false;
-            document.getElementById('qrSerialReceiveOverlay').style.display = 'none';
+            document.getElementById('qrSerialScannerOverlay').style.display = 'none';
             document.body.classList.remove('modal-open');
+            if (qrSerialScannerInstance && qrSerialScannerInstance.isScanning) {
+                qrSerialScannerInstance.stop().catch(() => { });
+            }
         }
     </script>
 </body>
