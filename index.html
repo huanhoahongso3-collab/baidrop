@@ -1047,6 +1047,7 @@
                 edit_name_prompt: 'Enter your device name:',
                 initializing: 'Initializing...',
                 wants_to_send: 'wants to send you',
+                waiting_for: 'Waiting for',
                 ready_to_send: 'Ready to Send',
                 ready_to_receive: 'Ready to Receive',
                 initial_prompt: 'Please select a file first using the + button.',
@@ -1086,6 +1087,7 @@
                 edit_name_prompt: 'Nhập tên thiết bị của bạn:',
                 initializing: 'Đang khởi tạo...',
                 wants_to_send: 'muốn gửi cho bạn',
+                waiting_for: 'Đang đợi',
                 ready_to_send: 'Sẵn sàng gửi',
                 ready_to_receive: 'Sẵn sàng nhận',
                 initial_prompt: 'Vui lòng chọn tệp trước bằng nút +.',
@@ -1698,6 +1700,7 @@
 
             conn.on('open', () => {
                 clearTimeout(connTimeout);
+                conn.send({ type: 'hello', name: myName, avatar: myAvatar });
                 sendRequest(conn);
             });
 
@@ -1765,7 +1768,21 @@
         function handleConnectionData(conn, data) {
             if (currentConnection !== conn) return;
 
-            if (data.type === 'request') {
+            if (data.type === 'hello') {
+                if (transferRole === 'sender') {
+                    let avatarHtml = `<div class="peer-avatar" style="width:32px; height:32px; font-size:16px;">${(data.name || ' ')[0].toUpperCase()}</div>`;
+                    if (data.avatar && data.avatar !== 'default' && data.avatar !== 'airdrop') {
+                        if (data.avatar.startsWith('data:image')) {
+                            avatarHtml = `<div class="peer-avatar" style="width:32px; height:32px;"><img src="${data.avatar}" style="width:100%; height:100%; object-fit:cover; display:block;"></div>`;
+                        } else if (data.avatar === 'logo' || data.avatar === 'lotus') {
+                            avatarHtml = `<div class="peer-avatar material-icons-round" style="width:32px; height:32px; font-size:18px; background-color: var(--md-sys-color-primary); border: none; color: white;">help</div>`;
+                        } else {
+                            avatarHtml = `<div class="peer-avatar material-icons-round" style="width:32px; height:32px; font-size:18px;">${data.avatar}</div>`;
+                        }
+                    }
+                    document.getElementById('transferStatus').innerHTML = `<div style="display:flex; align-items:center; justify-content:center; gap:8px;">${avatarHtml} <span>${t('waiting_for')} ${data.name}...</span></div>`;
+                }
+            } else if (data.type === 'request') {
                 hasPressedStart = false;
                 otherHasPressedStart = false;
                 transferOverlay.classList.remove('modal-waiting');
@@ -1903,7 +1920,7 @@
         let chunkAckResolver = null;
         async function beginChunkedSend() {
             transferStatus.innerText = t('sending');
-            const CHUNK_SIZE = currentConnection.isOnlineRelay ? (3 * 1024 * 1024) : (64 * 1024);
+            const CHUNK_SIZE = currentConnection.isOnlineRelay ? (2 * 1024 * 1024) : (64 * 1024);
             const startTime = Date.now();
             const totalSize = selectedFiles.reduce((sum, f) => sum + f.size, 0);
             let totalUploadedBeforeCurrentFile = 0;
@@ -1938,7 +1955,7 @@
                     // WAIT for receiver to acknowledge this chunk
                     await new Promise(resolve => {
                         chunkAckResolver = resolve;
-                        setTimeout(() => { if (chunkAckResolver === resolve) { chunkAckResolver = null; resolve(); } }, 5000);
+                        setTimeout(() => { if (chunkAckResolver === resolve) { chunkAckResolver = null; resolve(); } }, currentConnection.isOnlineRelay ? 30000 : 5000);
                     });
 
                     // Local calculation for cumulative progress
@@ -2328,38 +2345,9 @@
 
             customConn.on('open', () => {
                 closeQRDisplay();
-                // We wait for the receiver's 'offline-join' message instead of starting immediately
+                startSendRequest(customConn.peer);
             });
-            customConn.on('data', (data) => {
-                if (data.type === 'offline-join') {
-                    let avatarHtml = `<div class="peer-avatar">${(data.name || ' ')[0].toUpperCase()}</div>`;
-                    if (data.avatar && data.avatar !== 'default' && data.avatar !== 'airdrop') {
-                        if (data.avatar.startsWith('data:image')) {
-                            avatarHtml = `<div class="peer-avatar"><img src="${data.avatar}" style="width:100%; height:100%; object-fit:cover; display:block;"></div>`;
-                        } else if (data.avatar === 'logo' || data.avatar === 'lotus') {
-                            avatarHtml = `<div class="peer-avatar material-icons-round" style="background-color: var(--md-sys-color-primary); border: none; color: white;">help</div>`;
-                        } else {
-                            avatarHtml = `<div class="peer-avatar material-icons-round">${data.avatar}</div>`;
-                        }
-                    }
-
-                    const msgHtml = `
-                        <div style="display:flex; flex-direction:column; align-items:center; gap:16px;">
-                            ${avatarHtml}
-                            <div style="text-align:center;">
-                                <strong>${data.name}</strong> wants to receive your files.
-                            </div>
-                        </div>
-                    `;
-
-                    showPromptDialog('Requesting Permission', msgHtml,
-                        () => startSendRequest(customConn.peer),
-                        () => customConn.close()
-                    );
-                } else {
-                    handleConnectionData(customConn, data);
-                }
-            });
+            customConn.on('data', (data) => handleConnectionData(customConn, data));
 
             const offer = await offlinePeerConnection.createOffer();
             await offlinePeerConnection.setLocalDescription(offer);
@@ -2469,7 +2457,7 @@
                     customConn.on('open', () => {
                         closeQRDisplay();
                         closeQRScanner();
-                        customConn.send({ type: 'offline-join', name: myName, avatar: myAvatar });
+                        customConn.send({ type: 'hello', name: myName, avatar: myAvatar });
                     });
                     customConn.on('data', (data) => handleConnectionData(customConn, data));
 
@@ -2591,60 +2579,44 @@
                         if (data.receiver && !this.receiverSeen) {
                             this.receiverSeen = true;
 
-                            let avatarHtml = `<div class="peer-avatar">${(data.receiver.name || ' ')[0].toUpperCase()}</div>`;
+                            let avatarHtml = `<div class="peer-avatar" style="width:32px; height:32px; font-size:16px;">${(data.receiver.name||' ')[0].toUpperCase()}</div>`;
                             if (data.receiver.avatar && data.receiver.avatar !== 'default' && data.receiver.avatar !== 'airdrop') {
                                 if (data.receiver.avatar.startsWith('data:image')) {
-                                    avatarHtml = `<div class="peer-avatar"><img src="${data.receiver.avatar}" style="width:100%; height:100%; object-fit:cover; display:block;"></div>`;
+                                    avatarHtml = `<div class="peer-avatar" style="width:32px; height:32px;"><img src="${data.receiver.avatar}" style="width:100%; height:100%; object-fit:cover; display:block;"></div>`;
                                 } else if (data.receiver.avatar === 'logo' || data.receiver.avatar === 'lotus') {
-                                    avatarHtml = `<div class="peer-avatar material-icons-round" style="background-color: var(--md-sys-color-primary); border: none; color: white;">help</div>`;
+                                    avatarHtml = `<div class="peer-avatar material-icons-round" style="width:32px; height:32px; font-size:18px; background-color: var(--md-sys-color-primary); border: none; color: white;">help</div>`;
                                 } else {
-                                    avatarHtml = `<div class="peer-avatar material-icons-round">${data.receiver.avatar}</div>`;
+                                    avatarHtml = `<div class="peer-avatar material-icons-round" style="width:32px; height:32px; font-size:18px;">${data.receiver.avatar}</div>`;
                                 }
                             }
-
-                            const msgHtml = `
-                                <div style="display:flex; flex-direction:column; align-items:center; gap:16px;">
-                                    ${avatarHtml}
-                                    <div style="text-align:center;">
-                                        <strong>${data.receiver.name}</strong> wants to receive your files.
-                                    </div>
-                                </div>
-                            `;
-
-                            showPromptDialog('Requesting Permission', msgHtml,
-                                async () => {
-                                    closeQRDisplay();
-                                    await fetch('/api/relay', {
-                                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ roomId: this.roomId, action: 'respond', accept: true })
-                                    });
-                                    document.body.classList.add('modal-open');
-                                    const to = document.getElementById('transferOverlay');
-                                    to.classList.remove('modal-waiting');
-                                    to.style.display = 'flex';
-                                    document.getElementById('transferStatus').innerText = t('connecting');
-                                    progressBar().style.width = '0%';
-                                    document.getElementById('transferProgressText').innerText = '0%';
-                                    document.getElementById('transferSpeed').innerText = '0 KB/s';
-                                    document.getElementById('transferActions').style.display = 'none';
-                                    document.getElementById('transferTitle').innerText = t('sending');
-                                    this.emit('data', { type: 'response', accepted: true });
-                                },
-                                async () => {
-                                    closeQRDisplay();
-                                    await fetch('/api/relay', {
-                                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ roomId: this.roomId, action: 'respond', accept: false })
-                                    });
-                                    this.close();
-                                    resetTransferState();
-                                }
-                            );
+                            
+                            closeQRDisplay();
+                            
+                            document.body.classList.add('modal-open');
+                            const to = document.getElementById('transferOverlay');
+                            to.classList.add('modal-waiting');
+                            to.style.display = 'flex';
+                            document.getElementById('transferTitle').innerText = t('connecting');
+                            document.getElementById('transferActions').style.display = 'none';
+                            progressBar().style.width = '0%';
+                            document.getElementById('transferStatus').innerHTML = `<div style="display:flex; align-items:center; justify-content:center; gap:8px;">${avatarHtml} <span>${t('waiting_for')} ${data.receiver.name}...</span></div>`;
                         }
+                        
+                        if (data.status === 'accepted' && !this.acceptedSeen) {
+                            this.acceptedSeen = true;
+                            // Trigger response logically
+                            document.getElementById('transferOverlay').classList.remove('modal-waiting');
+                            this.emit('data', { type: 'response', accepted: true });
+                        }
+                        
                         if (data.chunkAck && data.status === 'transferring' && this.lastChunkIndexAcked !== this.currentChunkIndex) {
                             this.lastChunkIndexAcked = this.currentChunkIndex;
                             // Acknowledge chunk
                             this.emit('data', { type: 'next-chunk' });
+                        }
+                        
+                        if (data.status === 'completed' && this.lastPolledStatus !== 'completed') {
+                            this.emit('data', { type: 'transfer-complete' });
                         }
                     } else {
                         // Receiver
@@ -2674,7 +2646,7 @@
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ roomId: this.roomId, action: 'ack_chunk' })
-                            });
+                            }).then(() => setTimeout(() => this.poll(), 50));
                         }
                     }
                 } catch (err) { }
@@ -2720,6 +2692,14 @@
                         body: JSON.stringify({ roomId: this.roomId, action: 'cancel' })
                     });
                     this.close();
+                    return;
+                }
+                
+                if (data.type === 'transfer-complete') {
+                    await fetch('/api/relay', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ roomId: this.roomId, action: 'complete' })
+                    });
                     return;
                 }
             }
