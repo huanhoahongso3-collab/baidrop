@@ -783,7 +783,7 @@
             <div class="section-header">
                 <div style="display:flex; align-items:center; gap:8px;">
                     <div class="section-title" data-t="nearby_devices">Nearby Devices</div>
-                    <button class="btn btn-text no-shade" onclick="scanOfflineQR()" title="Scan Offline QR"
+                    <button class="btn btn-text no-shade" onclick="scanOfflineQR()" title="Scan QR"
                         style="padding:2px 8px; font-size:18px; color:var(--md-sys-color-primary);">
                         <span class="material-icons-round">qr_code_scanner</span>
                     </button>
@@ -1023,7 +1023,7 @@
         const TRANSLATIONS = {
             en: {
                 hero_title: 'Send Files Instantly.',
-                hero_subtitle: 'Secure, fast, and serverless peer-to-peer sharing.',
+                hero_subtitle: 'Secure, fast peer-to-peer sharing.',
                 nearby_devices: 'Nearby Devices',
                 scanning: 'Scanning...',
                 no_peers: 'No one nearby yet. Share the link with someone on your network!',
@@ -1062,7 +1062,7 @@
             },
             vi: {
                 hero_title: 'Gửi tệp ngay lập tức.',
-                hero_subtitle: 'Bảo mật, nhanh chóng và chia sẻ ngang hàng không cần máy chủ.',
+                hero_subtitle: 'Bảo mật, nhanh chóng và chia sẻ ngang hàng.',
                 nearby_devices: 'Thiết bị lân cận',
                 scanning: 'Đang tìm kiếm...',
                 no_peers: 'Chưa thấy ai lân cận. Hãy chia sẻ liên kết với mọi người!',
@@ -1717,13 +1717,39 @@
             });
         }
 
+        function showPromptDialog(title, htmlContent, onAccept, onDecline) {
+            document.querySelector('#incomingOverlay .modal-title').innerText = title;
+            document.getElementById('incomingContent').innerHTML = htmlContent;
+
+            const btnDecline = document.querySelector('#incomingOverlay .btn-text');
+            const btnAccept = document.querySelector('#incomingOverlay .btn-filled');
+
+            const newDecline = btnDecline.cloneNode(true);
+            const newAccept = btnAccept.cloneNode(true);
+            btnDecline.parentNode.replaceChild(newDecline, btnDecline);
+            btnAccept.parentNode.replaceChild(newAccept, btnAccept);
+
+            newDecline.onclick = () => {
+                document.getElementById('incomingOverlay').style.display = 'none';
+                if (onDecline) onDecline();
+            };
+            newAccept.onclick = () => {
+                document.getElementById('incomingOverlay').style.display = 'none';
+                if (onAccept) onAccept();
+            };
+
+            document.getElementById('incomingOverlay').style.display = 'flex';
+            document.body.classList.add('modal-open');
+        }
+
         function sendRequest(conn) {
             if (selectedFiles.length === 0) return;
             transferStatus.innerText = t('requesting');
             conn.send({
                 type: 'request',
                 files: selectedFiles.map(f => ({ name: f.name, size: f.size, type: f.type })),
-                senderName: myName
+                senderName: myName,
+                senderAvatar: myAvatar
             });
         }
 
@@ -1753,16 +1779,31 @@
                     filesHtml = `<strong>${data.files.length} items</strong> (${formatBytes(data.files.reduce((a, b) => a + b.size, 0))})`;
                 }
 
-                document.getElementById('incomingContent').innerHTML = `
+                let avatarHtml = `<div class="peer-avatar">${(data.senderName || ' ')[0].toUpperCase()}</div>`;
+                if (data.senderAvatar && data.senderAvatar !== 'default' && data.senderAvatar !== 'airdrop') {
+                    if (data.senderAvatar.startsWith('data:image')) {
+                        avatarHtml = `<div class="peer-avatar"><img src="${data.senderAvatar}" style="width:100%; height:100%; object-fit:cover; display:block;"></div>`;
+                    } else if (data.senderAvatar === 'logo' || data.senderAvatar === 'lotus') {
+                        avatarHtml = `<div class="peer-avatar material-icons-round" style="background-color: var(--md-sys-color-primary); border: none; color: white;">help</div>`;
+                    } else {
+                        avatarHtml = `<div class="peer-avatar material-icons-round">${data.senderAvatar}</div>`;
+                    }
+                }
+
+                const htmlContent = `
                     <div style="display:flex; flex-direction:column; align-items:center; gap:16px;">
-                        <span class="material-icons-round" style="font-size:48px; color:var(--md-sys-color-primary);">description</span>
+                        ${avatarHtml}
                         <div style="text-align:center;">
                             <strong>${data.senderName}</strong> ${t('wants_to_send')}<br>
                             ${filesHtml}
                         </div>
                     </div>
                 `;
-                incomingOverlay.style.display = 'flex';
+
+                showPromptDialog(t('incoming_file'), htmlContent,
+                    () => respondToRequest(true),
+                    () => respondToRequest(false)
+                );
             } else if (data.type === 'response') {
                 if (data.accepted) {
                     hasPressedStart = true;
@@ -2287,19 +2328,52 @@
 
             customConn.on('open', () => {
                 closeQRDisplay();
-                startSendRequest(customConn.peer);
+                // We wait for the receiver's 'offline-join' message instead of starting immediately
             });
-            customConn.on('data', (data) => handleConnectionData(customConn, data));
+            customConn.on('data', (data) => {
+                if (data.type === 'offline-join') {
+                    let avatarHtml = `<div class="peer-avatar">${(data.name || ' ')[0].toUpperCase()}</div>`;
+                    if (data.avatar && data.avatar !== 'default' && data.avatar !== 'airdrop') {
+                        if (data.avatar.startsWith('data:image')) {
+                            avatarHtml = `<div class="peer-avatar"><img src="${data.avatar}" style="width:100%; height:100%; object-fit:cover; display:block;"></div>`;
+                        } else if (data.avatar === 'logo' || data.avatar === 'lotus') {
+                            avatarHtml = `<div class="peer-avatar material-icons-round" style="background-color: var(--md-sys-color-primary); border: none; color: white;">help</div>`;
+                        } else {
+                            avatarHtml = `<div class="peer-avatar material-icons-round">${data.avatar}</div>`;
+                        }
+                    }
+
+                    const msgHtml = `
+                        <div style="display:flex; flex-direction:column; align-items:center; gap:16px;">
+                            ${avatarHtml}
+                            <div style="text-align:center;">
+                                <strong>${data.name}</strong> wants to receive your files.
+                            </div>
+                        </div>
+                    `;
+
+                    showPromptDialog('Requesting Permission', msgHtml,
+                        () => startSendRequest(customConn.peer),
+                        () => customConn.close()
+                    );
+                } else {
+                    handleConnectionData(customConn, data);
+                }
+            });
 
             const offer = await offlinePeerConnection.createOffer();
             await offlinePeerConnection.setLocalDescription(offer);
 
-            // Wait a brief moment for local ICE candidate to be collected (LAN IPs) since STUN is empty
             await new Promise(r => setTimeout(r, 600));
 
             const offerData = JSON.stringify(offlinePeerConnection.localDescription);
-            const compressedOffer = await compressString(offerData);
-            currentOfflineString = 'BD_OFFER:' + compressedOffer;
+            const shortId = Math.random().toString(36).substring(2, 8);
+            await fetch('/api/relay', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'store_sdp', roomId: shortId, sdp: offerData })
+            });
+
+            currentOfflineString = window.location.origin + window.location.pathname + '?offer=' + shortId;
 
             document.getElementById('qrcodeDisplay').innerHTML = '';
             new QRCode(document.getElementById('qrcodeDisplay'), {
@@ -2366,12 +2440,24 @@
                     return;
                 }
 
-                if (text.startsWith('BD_OFFER:')) {
-                    // Receiver scanning Sender's Offer
+                if (text.includes('?offer=') || text.startsWith('BD_OFFER:')) {
                     closeQRScanner();
 
-                    const compressedSDP = text.replace('BD_OFFER:', '');
-                    const sdpString = await decompressString(compressedSDP);
+                    let sdpString = '';
+                    if (text.startsWith('BD_OFFER:')) {
+                        const compressedSDP = text.replace('BD_OFFER:', '');
+                        sdpString = await decompressString(compressedSDP);
+                    } else {
+                        const url = new URL(text);
+                        const shortId = url.searchParams.get('offer');
+                        const response = await fetch('/api/relay', {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ action: 'get_sdp', roomId: shortId })
+                        });
+                        const resData = await response.json();
+                        if (!resData.sdp) { alert('QR Code expired. Please generate a new one.'); return; }
+                        sdpString = resData.sdp;
+                    }
                     const offerDesc = JSON.parse(sdpString);
 
                     offlinePeerConnection = new RTCPeerConnection({ iceServers: [] });
@@ -2383,6 +2469,7 @@
                     customConn.on('open', () => {
                         closeQRDisplay();
                         closeQRScanner();
+                        customConn.send({ type: 'offline-join', name: myName, avatar: myAvatar });
                     });
                     customConn.on('data', (data) => handleConnectionData(customConn, data));
 
@@ -2393,8 +2480,12 @@
                     await new Promise(r => setTimeout(r, 600)); // Gather local ICE
 
                     const answerData = JSON.stringify(offlinePeerConnection.localDescription);
-                    const compressedAnswer = await compressString(answerData);
-                    currentOfflineString = 'BD_ANSWER:' + compressedAnswer;
+                    const ansId = Math.random().toString(36).substring(2, 8);
+                    await fetch('/api/relay', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'store_sdp', roomId: ansId, sdp: answerData })
+                    });
+                    currentOfflineString = window.location.origin + window.location.pathname + '?answer=' + ansId;
 
                     // Show Answer QR for Sender to scan
                     document.getElementById('qrDisplayOverlay').style.display = 'flex';
@@ -2409,11 +2500,26 @@
                     document.getElementById('qrDisplayStatus').innerText = 'Ask the Host to scan this connection Answer.';
                     document.getElementById('scanAnswerBtn').style.display = 'none';
 
-                } else if (text.startsWith('BD_ANSWER:')) {
+                } else if (text.includes('?answer=') || text.startsWith('BD_ANSWER:')) {
                     // Sender scanning Receiver's Answer
                     closeQRScanner();
-                    const compressedSDP = text.replace('BD_ANSWER:', '');
-                    const sdpString = await decompressString(compressedSDP);
+                    
+                    let sdpString = '';
+                    if (text.startsWith('BD_ANSWER:')) {
+                        const compressedSDP = text.replace('BD_ANSWER:', '');
+                        sdpString = await decompressString(compressedSDP);
+                    } else {
+                        const url = new URL(text);
+                        const ansId = url.searchParams.get('answer');
+                        const response = await fetch('/api/relay', {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ action: 'get_sdp', roomId: ansId })
+                        });
+                        const resData = await response.json();
+                        if (!resData.sdp) { alert('Answer expired.'); return; }
+                        sdpString = resData.sdp;
+                    }
+                    
                     const answerDesc = JSON.parse(sdpString);
 
                     await offlinePeerConnection.setRemoteDescription(answerDesc);
@@ -2484,37 +2590,56 @@
                     if (this.role === 'sender') {
                         if (data.receiver && !this.receiverSeen) {
                             this.receiverSeen = true;
-                            // Prompt Sender
-                            const msg = `\n${data.receiver.name} wants to receive your files.\nAccept?`;
-                            const acc = confirm(msg);
 
-                            await fetch('/api/relay', {
-                                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ roomId: this.roomId, action: 'respond', accept: acc })
-                            });
-
-                            closeQRDisplay();
-                            document.body.classList.remove('modal-open');
-
-                            if (!acc) {
-                                this.close();
-                                resetTransferState();
-                            } else {
-                                // Initialize the Transfer UI only now!
-                                document.body.classList.add('modal-open');
-                                const to = document.getElementById('transferOverlay');
-                                to.classList.remove('modal-waiting');
-                                to.style.display = 'flex';
-                                document.getElementById('transferStatus').innerText = t('connecting');
-                                progressBar().style.width = '0%';
-                                document.getElementById('transferProgressText').innerText = '0%';
-                                document.getElementById('transferSpeed').innerText = '0 KB/s';
-                                document.getElementById('transferActions').style.display = 'none';
-                                document.getElementById('transferTitle').innerText = t('sending');
-
-                                // Emulate answering receiver to kick off transfer
-                                this.emit('data', { type: 'response', accepted: true });
+                            let avatarHtml = `<div class="peer-avatar">${(data.receiver.name || ' ')[0].toUpperCase()}</div>`;
+                            if (data.receiver.avatar && data.receiver.avatar !== 'default' && data.receiver.avatar !== 'airdrop') {
+                                if (data.receiver.avatar.startsWith('data:image')) {
+                                    avatarHtml = `<div class="peer-avatar"><img src="${data.receiver.avatar}" style="width:100%; height:100%; object-fit:cover; display:block;"></div>`;
+                                } else if (data.receiver.avatar === 'logo' || data.receiver.avatar === 'lotus') {
+                                    avatarHtml = `<div class="peer-avatar material-icons-round" style="background-color: var(--md-sys-color-primary); border: none; color: white;">help</div>`;
+                                } else {
+                                    avatarHtml = `<div class="peer-avatar material-icons-round">${data.receiver.avatar}</div>`;
+                                }
                             }
+
+                            const msgHtml = `
+                                <div style="display:flex; flex-direction:column; align-items:center; gap:16px;">
+                                    ${avatarHtml}
+                                    <div style="text-align:center;">
+                                        <strong>${data.receiver.name}</strong> wants to receive your files.
+                                    </div>
+                                </div>
+                            `;
+
+                            showPromptDialog('Requesting Permission', msgHtml,
+                                async () => {
+                                    closeQRDisplay();
+                                    await fetch('/api/relay', {
+                                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ roomId: this.roomId, action: 'respond', accept: true })
+                                    });
+                                    document.body.classList.add('modal-open');
+                                    const to = document.getElementById('transferOverlay');
+                                    to.classList.remove('modal-waiting');
+                                    to.style.display = 'flex';
+                                    document.getElementById('transferStatus').innerText = t('connecting');
+                                    progressBar().style.width = '0%';
+                                    document.getElementById('transferProgressText').innerText = '0%';
+                                    document.getElementById('transferSpeed').innerText = '0 KB/s';
+                                    document.getElementById('transferActions').style.display = 'none';
+                                    document.getElementById('transferTitle').innerText = t('sending');
+                                    this.emit('data', { type: 'response', accepted: true });
+                                },
+                                async () => {
+                                    closeQRDisplay();
+                                    await fetch('/api/relay', {
+                                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ roomId: this.roomId, action: 'respond', accept: false })
+                                    });
+                                    this.close();
+                                    resetTransferState();
+                                }
+                            );
                         }
                         if (data.chunkAck && data.status === 'transferring' && this.lastChunkIndexAcked !== this.currentChunkIndex) {
                             this.lastChunkIndexAcked = this.currentChunkIndex;
@@ -2628,7 +2753,8 @@
                 const reqData = {
                     type: 'request',
                     files: selectedFiles.map(f => ({ name: f.name, size: f.size, type: f.type })),
-                    senderName: myName
+                    senderName: myName,
+                    senderAvatar: myAvatar
                 };
                 customConn.send(reqData);
 

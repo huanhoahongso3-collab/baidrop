@@ -21,11 +21,21 @@ export default function handler(req, res) {
             try { body = JSON.parse(body); } catch(e){}
         }
 
-        const { action, roomId, sender, receiver, requestData, accept, chunkData } = body || {};
+        const { action, roomId, sender, receiver, requestData, accept, chunkData, sdp } = body || {};
 
         if (!roomId) return res.status(400).json({ error: 'Missing roomId' });
 
         const now = Date.now();
+
+        if (action === 'store_sdp') {
+            // We just hijack the transfers map to hold temporary SDP strings
+            transfers.set(roomId, { sdp, lastSeen: now });
+            return res.status(200).json({ success: true });
+        }
+        if (action === 'get_sdp') {
+            const entry = transfers.get(roomId);
+            return res.status(200).json({ sdp: entry ? entry.sdp : null });
+        }
         // Cleanup stale transfers
         for (const [id, t] of transfers.entries()) {
             if (now - t.lastSeen > TIMEOUT_MS) transfers.delete(id);
