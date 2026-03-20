@@ -1078,6 +1078,7 @@
                 close: 'Close',
                 qr_offline_help: 'Ask the receiver to tap the Scanner icon and scan this code.\n\nThen, tap "Scan Answer" below to scan the code they generate.',
                 hosting_offline: 'Hosting Offline...',
+                mqtt_error: 'Cannot connect to MQTT server. Nearby devices function won\'t work.',
                 hosting_online: 'Hosting Online...',
                 answer_generated: 'Answer Generated',
                 qr_answer_help: 'Ask the Host to scan this connection Answer.'
@@ -1140,7 +1141,8 @@
                 hosting_offline: 'Đang lưu trữ ngoại tuyến...',
                 hosting_online: 'Đang lưu trữ trực tuyến...',
                 answer_generated: 'Đã tạo câu trả lời',
-                qr_answer_help: 'Yêu cầu người chủ trì quét câu trả lời kết nối này.'
+                qr_answer_help: 'Yêu cầu người chủ trì quét câu trả lời kết nối này.',
+                mqtt_error: 'Không thể kết nối với máy chủ MQTT. Chức năng thiết bị lân cận sẽ không hoạt động.'
             }
         };
 
@@ -1536,6 +1538,7 @@
 
         // DISCOVERY
         let discoveryInterval = null;
+        let discoveryError = false;
 
         function initVercelDiscovery() {
             if (discoveryInterval) clearInterval(discoveryInterval);
@@ -1561,6 +1564,7 @@
 
                 if (res.ok) {
                     const data = await res.json();
+                    discoveryError = false;
                     if (data.peers && Array.isArray(data.peers)) {
                         data.peers.forEach(p => {
                             if (p.id !== myId) {
@@ -1569,9 +1573,14 @@
                         });
                         renderPeers();
                     }
+                } else {
+                    discoveryError = true;
+                    renderPeers();
                 }
             } catch (err) {
                 console.warn('Vercel Discovery Poll Failed:', err);
+                discoveryError = true;
+                renderPeers();
             }
         }
 
@@ -1583,6 +1592,16 @@
                     peers.delete(id);
                     changed = true;
                 }
+            }
+
+            if (discoveryError) {
+                peerGrid.innerHTML = `
+                    <div class="empty-state">
+                        <span class="material-icons-round">cloud_off</span>
+                        <div data-t="mqtt_error" style="color: var(--md-sys-color-error);">${t('mqtt_error')}</div>
+                    </div>
+                `;
+                return;
             }
 
             if (peers.size === 0) {
@@ -1973,7 +1992,7 @@
         async function beginChunkedSend() {
             try {
                 transferStatus.innerText = t('sending');
-                const CHUNK_SIZE = currentConnection.isOnlineRelay ? (512 * 1024) : (64 * 1024);
+                const CHUNK_SIZE = currentConnection.isOnlineRelay ? (512 * 1024) : (256 * 1024);
                 const startTime = Date.now();
                 const totalSize = selectedFiles.reduce((sum, f) => sum + f.size, 0);
                 let totalUploadedBeforeCurrentFile = 0;
@@ -2005,11 +2024,13 @@
                             isLastFile: (i === selectedFiles.length - 1) && (offset >= file.size)
                         });
 
-                        // WAIT for receiver to acknowledge this chunk
-                        await new Promise(resolve => {
-                            chunkAckResolver = resolve;
-                            setTimeout(() => { if (chunkAckResolver === resolve) { chunkAckResolver = null; resolve(); } }, currentConnection.isOnlineRelay ? 30000 : 5000);
-                        });
+                        // WAIT for receiver to acknowledge this chunk (ONLY for online relay to prevent overwhelming)
+                        if (currentConnection.isOnlineRelay) {
+                            await new Promise(resolve => {
+                                chunkAckResolver = resolve;
+                                setTimeout(() => { if (chunkAckResolver === resolve) { chunkAckResolver = null; resolve(); } }, 30000);
+                            });
+                        }
 
                         // Local calculation for cumulative progress
                         const buffered = currentConnection.dataChannel ? currentConnection.dataChannel.bufferedAmount : 0;
