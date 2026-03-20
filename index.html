@@ -1306,7 +1306,7 @@
         instanceChannel.onmessage = (e) => {
             if (e.data && e.data.type === 'route_offline_answer') {
                 if (offlinePeerConnection && offlinePeerConnection.signalingState === 'have-local-offer') {
-                    handleOfflineQRScanned('BD_ANSWER:' + e.data.payload);
+                    handleOfflineQRScanned(e.data.payload);
                 }
             }
         };
@@ -2372,7 +2372,7 @@
             if (offlineOffer) {
                 // Instantly inject the offer!
                 setTimeout(() => {
-                    handleOfflineQRScanned('BD_OFFER:' + offlineOffer);
+                    handleOfflineQRScanned(offlineOffer);
                 }, 500); // Wait a half second for DOM to be fully painted
             } else if (senderId) {
                 const checkReady = setInterval(() => {
@@ -2396,8 +2396,9 @@
 
         function copyOfflineLink() {
             if (!currentOfflineString) return;
-            const param = currentOfflineString.startsWith('BD_OFFER:') ? 'offer=' : 'answer=';
-            const val = currentOfflineString.split(':')[1];
+            const isOffer = currentOfflineString.startsWith('BDS:') || currentOfflineString.startsWith('BDC:');
+            const param = isOffer ? 'offer=' : 'answer=';
+            const val = currentOfflineString;
             const url = window.location.origin + window.location.pathname + '?' + param + encodeURIComponent(val);
             navigator.clipboard.writeText(url).then(() => {
                 alert('Offline Link Copied! Send it to the other device.');
