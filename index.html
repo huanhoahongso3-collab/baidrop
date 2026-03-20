@@ -1991,7 +1991,7 @@
         async function beginChunkedSend() {
             try {
                 transferStatus.innerText = t('sending');
-                const CHUNK_SIZE = 160 * 1024; // Lowered to 160KB to stay safely under the 256KB hard limit including headers
+                const CHUNK_SIZE = 64 * 1024; // Safely set to 64KB. This avoids 'Message too large' errors while maintaining high throughput via bufferedAmount monitoring.
                 const startTime = Date.now();
                 const totalSize = selectedFiles.reduce((sum, f) => sum + f.size, 0);
                 let totalUploadedBeforeCurrentFile = 0;
@@ -2478,7 +2478,7 @@
 
             const offerData = JSON.stringify(offlinePeerConnection.localDescription);
             const shortId = Math.random().toString(36).substring(2, 8);
-            
+
             try {
                 await fetch('/api/relay', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -2776,7 +2776,7 @@
                         if (data.chunkAck && data.status === 'transferring' && this.lastChunkIndexAcked !== this.currentChunkIndex) {
                             this.lastChunkIndexAcked = this.currentChunkIndex;
                             // Acknowledge chunk
-                            nextDelay = 50; 
+                            nextDelay = 50;
                             this.emit('data', { type: 'next-chunk' });
                         }
 
