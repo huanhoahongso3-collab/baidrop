@@ -1555,26 +1555,31 @@
         }
 
         async function pollVercel() {
-            if (!myId || document.visibilityState === 'hidden') return; // Wait until PeerJS gives us an ID, and don't poll if hidden
+            if (document.visibilityState === 'hidden') return;
+            
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 2000);
 
             try {
                 const res = await fetch(DISCOVERY_ENDPOINT, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        id: myId,
+                        id: myId || 'healthcheck',
                         name: myName,
                         avatar: myAvatar,
                         ipHash: myIpHash
-                    })
+                    }),
+                    signal: controller.signal
                 });
+                clearTimeout(timeout);
 
                 if (res.ok) {
                     const data = await res.json();
                     discoveryError = false;
                     if (data.peers && Array.isArray(data.peers)) {
                         data.peers.forEach(p => {
-                            if (p.id !== myId) {
+                            if (p.id !== myId && p.id !== 'healthcheck') {
                                 peers.set(p.id, { ...p, lastSeen: Date.now() });
                             }
                         });
@@ -1585,7 +1590,7 @@
                     renderPeers();
                 }
             } catch (err) {
-                console.warn('Vercel Discovery Poll Failed:', err);
+                console.warn('Discovery Poll Failed:', err);
                 discoveryError = true;
                 renderPeers();
             }
