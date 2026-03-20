@@ -817,8 +817,12 @@
                 <div id="qrScannerStatus" style="font-size:12px; opacity:0.7;" data-t="waiting_for_camera">Waiting for
                     camera...</div>
             </div>
-            <div class="modal-actions">
-                <button class="btn btn-text no-shade" onclick="closeQRScanner()">Cancel</button>
+            <div class="modal-actions" style="justify-content: space-between;">
+                <button class="btn btn-text" onclick="switchCamera()" style="gap:4px;">
+                    <span class="material-icons-round">flip_camera_ios</span>
+                    <span data-t="switch_camera">Switch Camera</span>
+                </button>
+                <button class="btn btn-text no-shade" onclick="closeQRScanner()" data-t="cancel">Cancel</button>
             </div>
         </div>
     </div>
@@ -1080,7 +1084,8 @@
                 mqtt_error: 'Cannot connect to MQTT server. Nearby devices function won\'t work.',
                 hosting_online: 'Hosting Online...',
                 answer_generated: 'Answer Generated',
-                qr_answer_help: 'Ask the Host to scan this connection Answer.'
+                qr_answer_help: 'Ask the Host to scan this connection Answer.',
+                switch_camera: 'Switch Camera'
             },
             vi: {
                 hero_title: 'Gửi tệp ngay lập tức.',
@@ -1141,7 +1146,8 @@
                 hosting_online: 'Đang lưu trữ trực tuyến...',
                 answer_generated: 'Đã tạo câu trả lời',
                 qr_answer_help: 'Yêu cầu người chủ trì quét câu trả lời kết nối này.',
-                mqtt_error: 'Không thể kết nối với máy chủ MQTT. Chức năng thiết bị lân cận sẽ không hoạt động.'
+                mqtt_error: 'Không thể kết nối với máy chủ MQTT. Chức năng thiết bị lân cận sẽ không hoạt động.',
+                switch_camera: 'Đổi Camera'
             }
         };
 
@@ -2502,6 +2508,30 @@
             document.getElementById('scanAnswerBtn').style.display = 'block';
         }
 
+        let currentFacingMode = "environment";
+        async function switchCamera() {
+            if (!qrScannerInstance) return;
+            currentFacingMode = (currentFacingMode === "environment") ? "user" : "environment";
+            
+            try {
+                if (qrScannerInstance.isScanning) {
+                    await qrScannerInstance.stop();
+                }
+                const statusEl = document.getElementById('qrScannerStatus');
+                if (statusEl) statusEl.innerText = t('starting_camera');
+                
+                // Re-start with new mode
+                // We recreate the function here instead of a global one to keep dependencies simple
+                startScannerWithFacingMode(currentFacingMode);
+            } catch (err) {
+                console.error("Switch failed", err);
+                const statusEl = document.getElementById('qrScannerStatus');
+                if (statusEl) statusEl.innerText = 'Switch failed: ' + (err.message || err);
+            }
+        }
+
+        let startScannerWithFacingMode = null; // Defined inside scanOfflineQR to share variables
+
         function scanOfflineQR() {
             updateUI();
             document.getElementById('qrScannerOverlay').style.display = 'flex';
@@ -2511,7 +2541,10 @@
                 qrScannerInstance = new Html5Qrcode("qrReader");
             }
 
-            const startScanner = (facingModeOpt) => {
+            startScannerWithFacingMode = (facingModeStr) => {
+                const facingModeOpt = { facingMode: facingModeStr };
+                currentFacingMode = facingModeStr;
+                
                 qrScannerInstance.start(
                     facingModeOpt,
                     { fps: 10, qrbox: { width: 250, height: 250 } },
@@ -2527,14 +2560,14 @@
                     if (facingModeOpt.facingMode === "environment") {
                         try { qrScannerInstance.clear(); } catch (e) { } // Attempt safe cleanup
                         qrScannerInstance = new Html5Qrcode("qrReader"); // Re-instantiate to avoid corrupted internal state
-                        startScanner({ facingMode: "user" });
+                        startScannerWithFacingMode("user");
                     } else {
                         document.getElementById('qrScannerStatus').innerText = 'Camera fail: ' + (err.message || err);
                     }
                 });
             };
 
-            startScanner({ facingMode: "environment" });
+            startScannerWithFacingMode(currentFacingMode);
         }
 
         function closeQRScanner() {
