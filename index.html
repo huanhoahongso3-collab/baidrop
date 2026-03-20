@@ -65,7 +65,7 @@
             color: #ffffff !important;
         }
 
-        [data-theme="dark"] .device-name, 
+        [data-theme="dark"] .device-name,
         [data-theme="dark"] .device-id {
             color: #ffffff !important;
             opacity: 1 !important;
@@ -98,7 +98,7 @@
                 color: #ffffff !important;
             }
 
-            :root:not([data-theme="light"]) .device-name, 
+            :root:not([data-theme="light"]) .device-name,
             :root:not([data-theme="light"]) .device-id {
                 color: #ffffff !important;
                 opacity: 1 !important;
@@ -851,12 +851,15 @@
                 <div id="qrScannerStatus" style="font-size:12px; opacity:0.7;" data-t="waiting_for_camera">Waiting for
                     camera...</div>
             </div>
-            <div class="modal-actions" style="justify-content: space-between !important; display: flex !important; width: 100%;">
-                <button class="btn btn-text" onclick="switchCamera()" style="gap:8px; display:inline-flex !important; padding: 0 16px; z-index: 1001; position: relative;">
+            <div class="modal-actions"
+                style="justify-content: space-between !important; display: flex !important; width: 100%;">
+                <button class="btn btn-text" onclick="switchCamera()"
+                    style="gap:8px; display:inline-flex !important; padding: 0 16px; z-index: 1001; position: relative;">
                     <span class="material-icons-round">flip_camera_ios</span>
                     <span data-t="switch_camera">Switch Camera</span>
                 </button>
-                <button class="btn btn-text no-shade" onclick="closeQRScanner()" data-t="cancel" style="padding: 0 16px; z-index: 1001; position: relative;">Cancel</button>
+                <button class="btn btn-text no-shade" onclick="closeQRScanner()" data-t="cancel"
+                    style="padding: 0 16px; z-index: 1001; position: relative;">Cancel</button>
             </div>
         </div>
     </div>
@@ -931,7 +934,8 @@
                 <div style="display: flex; flex-direction: column; gap: 12px;">
                     <button class="btn btn-filled" onclick="document.getElementById('avatarInput').click()"
                         data-t="upload_photo">Upload Photo</button>
-                    <button class="btn btn-text" id="useTemplateBtn" onclick="showAvatarTemplates()" data-t="use_template" style="display: block;">Use
+                    <button class="btn btn-text" id="useTemplateBtn" onclick="showAvatarTemplates()"
+                        data-t="use_template" style="display: block;">Use
                         Template</button>
                     <button class="btn btn-text" onclick="resetAvatar()" data-t="reset_to_letter">Reset to
                         Letter</button>
@@ -986,8 +990,11 @@
         <div class="modal">
             <div class="modal-title" data-t="sharing_qr">Sharing through QR</div>
             <div class="modal-content">
-                <div id="qrSerialDisplay" style="display:flex; justify-content:center; margin-bottom:16px; min-height: 250px; align-items: center;"></div>
-                <div id="qrSerialProgress" style="text-align:center; font-family:var(--font-main); font-weight:500; font-size:14px;">
+                <div id="qrSerialDisplay"
+                    style="display:flex; justify-content:center; margin-bottom:16px; min-height: 250px; align-items: center;">
+                </div>
+                <div id="qrSerialProgress"
+                    style="text-align:center; font-family:var(--font-main); font-weight:500; font-size:14px;">
                     Block 0 / 0
                 </div>
                 <div class="progress-container" style="margin-top:12px;">
@@ -999,9 +1006,15 @@
             </div>
             <div class="modal-actions" style="display:flex; justify-content:space-between; align-items:center;">
                 <div style="display:flex; gap:8px;">
-                    <button class="btn btn-icon" style="width:40px; height:40px; background-color:var(--md-sys-color-secondary-container); color:var(--md-sys-color-on-secondary-container); border-radius:12px; display:flex; align-items:center; justify-content:center;" onclick="prevSerialQR()"><span class="material-icons-round">chevron_left</span></button>
-                    <button class="btn btn-icon" id="qrAutoPlayBtn" style="width:40px; height:40px; background-color:var(--md-sys-color-primary-container); color:var(--md-sys-color-on-primary-container); border-radius:12px; display:flex; align-items:center; justify-content:center;" onclick="toggleQRAutoPlay()"><span class="material-icons-round">play_arrow</span></button>
-                    <button class="btn btn-icon" style="width:40px; height:40px; background-color:var(--md-sys-color-secondary-container); color:var(--md-sys-color-on-secondary-container); border-radius:12px; display:flex; align-items:center; justify-content:center;" onclick="nextSerialQR()"><span class="material-icons-round">chevron_right</span></button>
+                    <button class="btn btn-icon"
+                        style="width:40px; height:40px; background-color:var(--md-sys-color-secondary-container); color:var(--md-sys-color-on-secondary-container); border-radius:12px; display:flex; align-items:center; justify-content:center;"
+                        onclick="prevSerialQR()"><span class="material-icons-round">chevron_left</span></button>
+                    <button class="btn btn-icon" id="qrAutoPlayBtn"
+                        style="width:40px; height:40px; background-color:var(--md-sys-color-primary-container); color:var(--md-sys-color-on-primary-container); border-radius:12px; display:flex; align-items:center; justify-content:center;"
+                        onclick="toggleQRAutoPlay()"><span class="material-icons-round">play_arrow</span></button>
+                    <button class="btn btn-icon"
+                        style="width:40px; height:40px; background-color:var(--md-sys-color-secondary-container); color:var(--md-sys-color-on-secondary-container); border-radius:12px; display:flex; align-items:center; justify-content:center;"
+                        onclick="nextSerialQR()"><span class="material-icons-round">chevron_right</span></button>
                 </div>
                 <button class="btn btn-text" onclick="closeQRSerialOverlay()" data-t="close">Close</button>
             </div>
@@ -1013,10 +1026,16 @@
         <div class="modal">
             <div class="modal-title" data-t="receive_qr">Receive via QR</div>
             <div class="modal-content">
-                <div id="qrSerialReader" style="width:100%; max-width:300px; min-height:250px; background-color:#000; border-radius:12px; overflow:hidden; margin:0 auto 16px;"></div>
-                <div id="qrSerialScannerStatus" style="font-size:14px; color:var(--md-sys-color-primary); text-align:center; margin-bottom:8px;"></div>
-                
-                <div id="qrSerialReceiveFilename" style="font-weight:bold; text-align:center; margin-bottom:8px; word-break: break-all;">Waiting for first QR...</div>
+                <div id="qrSerialReader"
+                    style="width:100%; max-width:300px; min-height:250px; background-color:#000; border-radius:12px; overflow:hidden; margin:0 auto 16px;">
+                </div>
+                <div id="qrSerialScannerStatus"
+                    style="font-size:14px; color:var(--md-sys-color-primary); text-align:center; margin-bottom:8px;">
+                </div>
+
+                <div id="qrSerialReceiveFilename"
+                    style="font-weight:bold; text-align:center; margin-bottom:8px; word-break: break-all;">Waiting for
+                    first QR...</div>
                 <div id="qrSerialReceiveProgress" style="text-align:center; font-size:14px;">Block 0 / ?</div>
                 <div class="progress-container" style="margin-top:12px;">
                     <div class="progress-bar" id="qrSerialReceiveProgressBar" style="width: 0%;"></div>
@@ -1402,7 +1421,7 @@
                 if (isIcon) av.classList.add('material-icons-round');
                 else av.classList.remove('material-icons-round');
             }
-            
+
             if (myIdEl()) myIdEl().innerText = (myId || t('initializing'));
         }
 
@@ -1641,7 +1660,7 @@
 
         async function pollVercel() {
             if (document.visibilityState === 'hidden') return;
-            
+
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 2000);
 
@@ -2481,7 +2500,7 @@
             const ufrag = sdp.match(/a=ice-ufrag:(.+)/)?.[1]?.trim();
             const pwd = sdp.match(/a=ice-pwd:(.+)/)?.[1]?.trim();
             const fingerprint = sdp.match(/a=fingerprint:sha-256 (.+)/)?.[1]?.trim();
-            
+
             // Candidate line: a=candidate:[foundation] [comp] [proto] [priority] [ip] [port] typ host ...
             const candMatches = [...sdp.matchAll(/a=candidate:\S+ \d+ \S+ \d+ (\S+) (\d+) typ host/gi)];
             let ip = '127.0.0.1';
@@ -2490,7 +2509,7 @@
                 ip = candMatches[0][1];
                 port = candMatches[0][2];
             }
-            
+
             if (!ufrag || !pwd || !fingerprint) return null;
             // Format: ufrag|pwd|fingerprint|ip|port
             return `${ufrag}|${pwd}|${fingerprint}|${ip}|${port}`;
@@ -2501,7 +2520,7 @@
             if (parts.length < 5) return null;
             const [ufrag, pwd, fingerprint, ip, port] = parts;
             const setup = type === 'offer' ? 'actpass' : 'active';
-            
+
             // Minimal valid SDP template for DataChannel
             const sdp = [
                 'v=0',
@@ -2520,7 +2539,7 @@
                 `a=candidate:0 1 UDP 2122260223 ${ip} ${port} typ host`,
                 ''
             ].join('\r\n');
-            
+
             return { type, sdp };
         }
 
@@ -2608,7 +2627,7 @@
             }
         }
 
-        let startScannerWithFacingMode = null; 
+        let startScannerWithFacingMode = null;
 
         function scanOfflineQR() {
             updateUI();
@@ -2625,7 +2644,7 @@
 
                 qrScannerInstance.start(
                     facingModeOpt,
-                    { fps: 15, formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ] },
+                    { fps: 15, formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE] },
                     async (decodedText) => {
                         document.getElementById('qrScannerStatus').innerText = 'Code scanned, processing...';
                         if (decodedText.startsWith('QS:')) {
@@ -2639,8 +2658,8 @@
                     document.getElementById('qrScannerStatus').innerText = t('scanner_active');
                 }).catch(err => {
                     if (facingModeOpt.facingMode === "environment") {
-                        try { qrScannerInstance.clear(); } catch (e) { } 
-                        qrScannerInstance = new Html5Qrcode("qrReader"); 
+                        try { qrScannerInstance.clear(); } catch (e) { }
+                        qrScannerInstance = new Html5Qrcode("qrReader");
                         startScannerWithFacingMode("user");
                     } else {
                         document.getElementById('qrScannerStatus').innerText = 'Camera fail: ' + (err.message || err);
@@ -2677,7 +2696,7 @@
 
                 qrSerialScannerInstance.start(
                     facingModeOpt,
-                    { fps: 15, formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ] },
+                    { fps: 15, formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE] },
                     async (decodedText) => {
                         let res = await handleSerialQRScanned(decodedText);
                         if (!res) {
@@ -2873,7 +2892,7 @@
                         sdpString = resData.sdp;
                     }
                     if (!sdpString) throw new Error('Legacy QR requires internet');
-                    
+
                     const offerDesc = JSON.parse(sdpString);
                     offlinePeerConnection = new RTCPeerConnection({ iceServers: [] });
                     const dataChannel = offlinePeerConnection.createDataChannel('baidrop-offline-channel', { negotiated: true, id: 0 });
@@ -2965,7 +2984,7 @@
                         if (data.receiver && !this.receiverSeen) {
                             this.receiverSeen = true;
 
-                                const avatarHtml = getAvatarHTML(data.receiver.avatar, data.receiver.name, 'small-avatar');
+                            const avatarHtml = getAvatarHTML(data.receiver.avatar, data.receiver.name, 'small-avatar');
 
                             closeQRDisplay();
 
@@ -2989,7 +3008,7 @@
                         if (data.chunkAck && data.status === 'transferring' && this.lastChunkIndexAcked !== this.currentChunkIndex) {
                             this.lastChunkIndexAcked = this.currentChunkIndex;
                             // Acknowledge chunk
-                            nextDelay = 50; 
+                            nextDelay = 50;
                             this.emit('data', { type: 'next-chunk' });
                         }
 
@@ -3266,16 +3285,16 @@
             try {
                 const compressed = await compressFile(file);
                 const base64 = uint8ArrayToBase64(compressed);
-                const chunkSize = 200; 
+                const chunkSize = 200;
                 qrSerialChunks = [];
                 const total = Math.ceil(base64.length / chunkSize);
                 const filename = encodeURIComponent(file.name);
-                
+
                 for (let i = 0; i < total; i++) {
                     const data = base64.substring(i * chunkSize, (i + 1) * chunkSize);
                     qrSerialChunks.push(`QS:${filename}:${total}:${i}:${data}`);
                 }
-                
+
                 qrSerialIndex = 0;
                 qrSerialAutoPlay = false;
 
@@ -3351,11 +3370,11 @@
         async function handleSerialQRScanned(content) {
             content = content.trim();
             if (!content.startsWith('QS:')) return false;
-            
+
             const filenameRegex = /^QS:([^:]+):(\d+):(\d+):([\s\S]*)$/;
             const match = content.match(filenameRegex);
             if (!match) return false;
-            
+
             const filename = decodeURIComponent(match[1]);
             const total = parseInt(match[2]);
             const index = parseInt(match[3]);
@@ -3375,7 +3394,7 @@
             if (!qrReceiveData.chunks.has(index)) {
                 qrReceiveData.chunks.set(index, data);
                 updateQRReceiveProgress();
-                
+
                 if (qrReceiveData.chunks.size === qrReceiveData.total) {
                     await completeQRReceive();
                 }
@@ -3393,16 +3412,16 @@
         async function completeQRReceive() {
             const { filename, total, chunks } = qrReceiveData;
             qrReceiveData.active = false;
-            
+
             // Reassemble
             let fullBase64 = '';
             for (let i = 0; i < total; i++) {
                 fullBase64 += chunks.get(i);
             }
-            
+
             const compressed = base64ToUint8Array(fullBase64);
             const decompressed = await decompressData(compressed);
-            
+
             const blob = new Blob([decompressed]);
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
