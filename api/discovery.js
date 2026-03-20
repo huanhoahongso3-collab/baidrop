@@ -21,10 +21,24 @@ export default function handler(req, res) {
     }
 
     try {
-        const { id, name, avatar, ipHash, hostHash } = req.body;
+        let body = req.body;
+        if (typeof body === 'string') {
+            try { body = JSON.parse(body); } catch(e){}
+        }
 
-        if (!id || (!ipHash && !hostHash)) {
+        const { id, name, avatar, ipHash, hostHash, action } = body || {};
+
+        if (!id) {
             return res.status(400).json({ error: 'Missing required fields' });
+        }
+
+        if (action === 'remove') {
+            peers.delete(id);
+            return res.status(200).json({ success: true });
+        }
+
+        if (!ipHash) {
+            return res.status(400).json({ error: 'Missing ipHash' });
         }
 
         const now = Date.now();
@@ -35,7 +49,6 @@ export default function handler(req, res) {
             name: name || 'Unknown Device',
             avatar: avatar || 'default',
             ipHash,
-            hostHash,
             lastSeen: now
         });
 
@@ -46,11 +59,11 @@ export default function handler(req, res) {
             }
         }
 
-        // Return peers on same ipHash OR same hostHash
+        // Return peers on same ipHash
         const nearbyPeers = [];
         for (const [peerId, peerData] of peers.entries()) {
             if (peerId !== id) {
-                if ((ipHash && peerData.ipHash === ipHash) || (hostHash && peerData.hostHash === hostHash)) {
+                if (ipHash && peerData.ipHash === ipHash) {
                     nearbyPeers.push({
                         id: peerData.id,
                         name: peerData.name,

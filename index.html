@@ -772,6 +772,9 @@
             <button id="qrShareBtn" class="btn btn-filled" style="display:none; gap:8px; align-items:center;" onclick="hostOfflineQR()">
                 <span class="material-icons-round">qr_code_2</span> Share Offline (QR)
             </button>
+            <button id="onlineShareBtn" class="btn btn-text" style="display:none; gap:8px; align-items:center; margin-top:-8px;" onclick="hostOnlineShare()">
+                <span class="material-icons-round">cloud_upload</span> Share Online (Link)
+            </button>
         </div>
 
         <div class="discovery-section">
@@ -1182,6 +1185,21 @@
             checkUrlForPeer();
             // Faster periodic peer list cleanup
             setInterval(renderPeers, 3000);
+
+            // Cleanup on close or hide
+            const cleanupPeer = () => {
+                if (myId) {
+                    navigator.sendBeacon(DISCOVERY_ENDPOINT, JSON.stringify({ id: myId, action: 'remove' }));
+                }
+            };
+            window.addEventListener('beforeunload', cleanupPeer);
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'hidden') {
+                    cleanupPeer();
+                } else if (document.visibilityState === 'visible') {
+                    pollVercel();
+                }
+            });
         }
 
         function registerServiceWorker() {
@@ -1479,11 +1497,9 @@
         }
 
         async function pollVercel() {
-            if (!myId) return; // Wait until PeerJS gives us an ID
+            if (!myId || document.visibilityState === 'hidden') return; // Wait until PeerJS gives us an ID, and don't poll if hidden
             
             try {
-                const hostHash = btoa(window.location.hostname).replace(/[+/=]/g, '').substring(0, 10);
-                
                 const res = await fetch(DISCOVERY_ENDPOINT, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1491,8 +1507,7 @@
                         id: myId,
                         name: myName,
                         avatar: myAvatar,
-                        ipHash: myIpHash,
-                        hostHash: hostHash
+                        ipHash: myIpHash
                     })
                 });
 
@@ -1595,6 +1610,7 @@
 
                     chip.style.display = 'flex';
                     document.getElementById('qrShareBtn').style.display = 'flex';
+                    document.getElementById('onlineShareBtn').style.display = 'flex';
                 }
             };
 
@@ -1621,6 +1637,7 @@
             folderInput.value = '';
             document.getElementById('selectedFileChip').style.display = 'none';
             document.getElementById('qrShareBtn').style.display = 'none';
+            document.getElementById('onlineShareBtn').style.display = 'none';
             // No longer forcing colors here to keep it consistent with CSS
             selectFileFab.style.backgroundColor = '';
             selectFileFab.style.color = '';
@@ -1841,7 +1858,7 @@
         let chunkAckResolver = null;
         async function beginChunkedSend() {
             transferStatus.innerText = t('sending');
-            const CHUNK_SIZE = 64 * 1024; // 64KB chunks for Firefox/Safari compatibility
+            const CHUNK_SIZE = currentConnection.isOnlineRelay ? (3 * 1024 * 1024) : (64 * 1024); 
             const startTime = Date.now();
             const totalSize = selectedFiles.reduce((sum, f) => sum + f.size, 0);
             let totalUploadedBeforeCurrentFile = 0;
@@ -2397,11 +2414,269 @@
                     closeQRScanner();
                 }
             } catch (err) {
-                console.error("QR Processing Error:", err);
-                alert('Failed to process QR Code. It might be corrupted.');
+                console.error("QR parse error", err);
+                alert('Invalid Bái Drop QR Code format.');
                 closeQRScanner();
             }
         }
+
+        // --- ONLINE TRANSFER LOGIC (VERCEL RELAY) ---
+        function arrayBufferToBase64(buffer) {
+            let binary = '';
+            let bytes = new Uint8Array(buffer);
+            for (let i = 0; i < bytes.byteLength; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return window.btoa(binary);
+        }
+
+        function base64ToArrayBuffer(base64) {
+            let binary = window.atob(base64);
+            let bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) {
+                bytes[i] = binary.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        class OnlineDataConnection {
+            constructor(roomId, role) {
+                this.peer = role === 'sender' ? 'online-receiver' : 'online-sender';
+                this.roomId = roomId;
+                this.role = role;
+                this.open = true;
+                this.isOnlineRelay = true;
+                this.dataChannel = { bufferedAmount: 0 }; 
+                this.callbacks = { data: [], open: [], close: [], error: [] };
+                this.isClosed = false;
+                this.lastPolledStatus = 'waiting';
+                this.pollInterval = setInterval(() => this.poll(), 1200);
+                setTimeout(() => this.emit('open', this), 50);
+            }
+
+            async poll() {
+                if (this.isClosed) return;
+                try {
+                    const action = this.role === 'sender' ? 'poll_sender' : 'poll_receiver';
+                    const res = await fetch('/api/relay', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ roomId: this.roomId, action })
+                    });
+                    if (!res.ok) return;
+                    const data = await res.json();
+                    
+                    if (data.status === 'cancelled' && this.lastPolledStatus !== 'cancelled') {
+                        this.emit('data', { type: 'cancel' });
+                    }
+                    this.lastPolledStatus = data.status;
+
+                    if (this.role === 'sender') {
+                        if (data.receiver && !this.receiverSeen) {
+                            this.receiverSeen = true;
+                            // Prompt Sender
+                            const msg = `\n${data.receiver.name} wants to receive your files.\nAccept?`;
+                            const acc = confirm(msg);
+                            
+                            await fetch('/api/relay', {
+                                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ roomId: this.roomId, action: 'respond', accept: acc })
+                            });
+                            
+                            closeQRDisplay();
+                            document.body.classList.remove('modal-open');
+                            
+                            if (!acc) {
+                                this.close();
+                                resetTransferState();
+                            } else {
+                                // Receiver waits for accepted status to show prompt, but in our logic
+                                // sending "response/accepted=true" emulates receiver answering sender's request.
+                                // In the standard flow, receiver says accepted, so sender starts sending a 'response' or starts the UI.
+                                // But sender is ALREADY in 'sending' state here. We just need to trigger the UI transition.
+                                this.emit('data', { type: 'response', accepted: true });
+                            }
+                        }
+                        if (data.chunkAck && data.status === 'transferring' && this.lastChunkIndexAcked !== this.currentChunkIndex) {
+                            this.lastChunkIndexAcked = this.currentChunkIndex;
+                            // Acknowledge chunk
+                            this.emit('data', { type: 'next-chunk' });
+                        }
+                    } else {
+                        // Receiver
+                        if (data.status === 'accepted' && !this.acceptedSeen) {
+                            this.acceptedSeen = true;
+                            // Trigger the 'response' logic for receiver to accept the initial prompt automatically,
+                            // or rather, we simulate that we are receiving.
+                            this.emit('data', { type: 'start' });
+                        }
+                        
+                        if (data.chunk && data.chunk.index !== this.lastReceivedChunkIndex) {
+                            this.lastReceivedChunkIndex = data.chunk.index;
+                            
+                            const buffer = base64ToArrayBuffer(data.chunk.data);
+                            const chunkData = {
+                                type: 'file-chunk',
+                                data: buffer,
+                                offset: data.chunk.offset,
+                                fileIndex: data.chunk.fileIndex,
+                                isLastChunk: data.chunk.isLastChunk,
+                                isLastFile: data.chunk.isLastFile
+                            };
+                            
+                            this.emit('data', chunkData);
+                            
+                            fetch('/api/relay', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ roomId: this.roomId, action: 'ack_chunk' })
+                            });
+                        }
+                    }
+                } catch (err) { }
+            }
+
+            async send(data) {
+                if (this.isClosed) return;
+                
+                if (data.type === 'request') {
+                    await fetch('/api/relay', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            roomId: this.roomId,
+                            action: 'create',
+                            sender: { id: myId, name: myName, avatar: myAvatar },
+                            requestData: data
+                        })
+                    });
+                    return;
+                }
+                
+                if (data.type === 'file-chunk') {
+                    const b64 = arrayBufferToBase64(data.data);
+                    this.currentChunkIndex = (this.currentChunkIndex || 0) + 1;
+                    const chunkPayload = {
+                        data: b64,
+                        offset: data.offset,
+                        fileIndex: data.fileIndex,
+                        isLastChunk: data.isLastChunk,
+                        isLastFile: data.isLastFile,
+                        index: this.currentChunkIndex
+                    };
+                    await fetch('/api/relay', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ roomId: this.roomId, action: 'send_chunk', chunkData: chunkPayload })
+                    });
+                    return;
+                }
+                
+                if (data.type === 'cancel') {
+                    fetch('/api/relay', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ roomId: this.roomId, action: 'cancel' })
+                    });
+                    this.close();
+                    return;
+                }
+            }
+
+            close() {
+                this.isClosed = true;
+                this.open = false;
+                clearInterval(this.pollInterval);
+                this.emit('close');
+            }
+
+            on(event, cb) { this.callbacks[event].push(cb); }
+            emit(event, payload) { this.callbacks[event].forEach(cb => cb(payload)); }
+        }
+
+        async function hostOnlineShare() {
+            if (selectedFiles.length === 0) return;
+
+            document.getElementById('qrDisplayOverlay').style.display = 'flex';
+            document.getElementById('qrcodeDisplay').innerHTML = '<div style="padding:20px;">Generating Online Room...</div>';
+            document.getElementById('qrDisplayTitle').innerText = 'Hosting Online...';
+            document.getElementById('scanAnswerBtn').style.display = 'none';
+
+            const roomId = Math.random().toString(36).substring(2, 9);
+            
+            const customConn = new OnlineDataConnection(roomId, 'sender');
+            currentConnection = customConn;
+            transferRole = 'sender';
+
+            customConn.on('open', () => {
+                // DON'T close QR display yet, wait for receiver to join
+                // But DO send the file metadata logic to the relay implicitly
+                startSendRequest(customConn.peer);
+                
+                // Show QR code for receiver
+                currentOfflineString = window.location.origin + window.location.pathname + '?online=' + roomId;
+                document.getElementById('qrcodeDisplay').innerHTML = '';
+                new QRCode(document.getElementById('qrcodeDisplay'), {
+                    text: currentOfflineString,
+                    width: 256,
+                    height: 256,
+                    correctLevel: QRCode.CorrectLevel.L
+                });
+                
+                document.getElementById('qrDisplayStatus').innerText = 'Ask the receiver to scan this code or open the link.\n\nA prompt will appear when they join.';
+            });
+            customConn.on('data', (data) => handleConnectionData(customConn, data));
+        }
+
+        // Updated checkUrlForPeer to handle online links
+        const originalCheckUrlForPeer = checkUrlForPeer;
+        checkUrlForPeer = () => {
+            const params = new URLSearchParams(window.location.search);
+            const onlineRoomId = params.get('online');
+            
+            if (onlineRoomId) {
+                const checkReady = setInterval(async () => {
+                    if (myId) {
+                        clearInterval(checkReady);
+                        transferRole = 'receiver';
+                        
+                        // Join the online room
+                        const res = await fetch('/api/relay', {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                roomId: onlineRoomId, action: 'join',
+                                receiver: { id: myId, name: myName, avatar: myAvatar }
+                            })
+                        });
+                        
+                        if (!res.ok) {
+                            alert('Session expired or invalid link.');
+                            return;
+                        }
+                        const data = await res.json();
+                        
+                        const conn = new OnlineDataConnection(onlineRoomId, 'receiver');
+                        currentConnection = conn;
+                        
+                        transferOverlay.style.display = 'flex';
+                        transferStatus.innerText = 'Waiting for sender to accept...';
+                        document.getElementById('transferTitle').innerText = 'Connecting...';
+                        document.getElementById('transferActions').style.display = 'none';
+                        
+                        conn.on('data', (d) => handleConnectionData(conn, d));
+                        conn.on('error', () => { alert(t('error_link')); transferOverlay.style.display = 'none'; });
+                        
+                        // We also need to manually trigger the "Incoming" UI if we want, but the Sender is the one
+                        // who accepts. In Bái Drop default, Receiver accepts. 
+                        // But online requirement: "Sender will be prompted".
+                        // So receiver just waits for sender to accept.
+                        // We skip 'request' prompt and set states as if we accepted.
+                        hasPressedStart = true;
+                        otherHasPressedStart = true; 
+                        pendingTransfer = data.requestData;
+                    }
+                }, 500);
+            } else {
+                originalCheckUrlForPeer();
+            }
+        };
 
         window.onload = init;
     </script>
