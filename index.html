@@ -2443,13 +2443,21 @@
             await new Promise(r => setTimeout(r, 600));
 
             const offerData = JSON.stringify(offlinePeerConnection.localDescription);
-            const shortId = Math.random().toString(36).substring(2, 8);
-            await fetch('/api/relay', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'store_sdp', roomId: shortId, sdp: offerData })
-            });
+            let offerString = '';
+            try {
+                const compressedOffer = await compressString(offerData);
+                offerString = 'BD_OFFER:' + compressedOffer;
+            } catch (err) { console.warn('Compression failed:', err); }
 
-            currentOfflineString = window.location.origin + window.location.pathname + '?offer=' + shortId;
+            const shortId = Math.random().toString(36).substring(2, 8);
+            try {
+                await fetch('/api/relay', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'store_sdp', roomId: shortId, sdp: offerData })
+                });
+            } catch (e) { console.warn('Relay failed (expected if offline):', e); }
+
+            currentOfflineString = (offerString && offerString.length < 1500) ? offerString : (window.location.origin + window.location.pathname + '?offer=' + shortId);
 
             document.getElementById('qrcodeDisplay').innerHTML = '';
             new QRCode(document.getElementById('qrcodeDisplay'), {
@@ -2532,7 +2540,7 @@
                             body: JSON.stringify({ action: 'get_sdp', roomId: shortId })
                         });
                         const resData = await response.json();
-                        if (!resData.sdp) { alert('QR Code expired. Please generate a new one.'); return; }
+                        if (!resData.sdp) throw new Error('SDP not found');
                         sdpString = resData.sdp;
                     }
                     const offerDesc = JSON.parse(sdpString);
@@ -2557,12 +2565,21 @@
                     await new Promise(r => setTimeout(r, 600)); // Gather local ICE
 
                     const answerData = JSON.stringify(offlinePeerConnection.localDescription);
+                    let answerString = '';
+                    try {
+                        const compressedAnswer = await compressString(answerData);
+                        answerString = 'BD_ANSWER:' + compressedAnswer;
+                    } catch (err) { }
+
                     const ansId = Math.random().toString(36).substring(2, 8);
-                    await fetch('/api/relay', {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ action: 'store_sdp', roomId: ansId, sdp: answerData })
-                    });
-                    currentOfflineString = window.location.origin + window.location.pathname + '?answer=' + ansId;
+                    try {
+                        await fetch('/api/relay', {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ action: 'store_sdp', roomId: ansId, sdp: answerData })
+                        });
+                    } catch (e) { }
+
+                    currentOfflineString = (answerString && answerString.length < 1500) ? answerString : (window.location.origin + window.location.pathname + '?answer=' + ansId);
 
                     // Show Answer QR for Sender to scan
                     updateUI();
