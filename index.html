@@ -1393,6 +1393,7 @@
 
         function openAccentPicker() {
             if (document.getElementById('transferOverlay').style.display === 'flex') return;
+            updateUI();
             document.getElementById('accentOverlay').style.display = 'flex';
             document.body.classList.add('modal-open');
         }
@@ -1405,6 +1406,7 @@
         function openAvatarPicker() {
             if (document.getElementById('transferOverlay').style.display === 'flex') return;
             showAvatarMain();
+            updateUI();
             document.getElementById('avatarOverlay').style.display = 'flex';
             document.body.classList.add('modal-open');
         }
@@ -1708,6 +1710,7 @@
 
             hasPressedStart = false;
             otherHasPressedStart = false;
+            updateUI();
             transferOverlay.classList.remove('modal-waiting');
             transferOverlay.style.display = 'flex';
             document.body.classList.add('modal-open');
@@ -1781,6 +1784,7 @@
                 if (onAccept) onAccept();
             };
 
+            updateUI();
             document.getElementById('incomingOverlay').style.display = 'flex';
             document.body.classList.add('modal-open');
         }
@@ -2439,6 +2443,7 @@
         }
 
         function scanOfflineQR() {
+            updateUI();
             document.getElementById('qrScannerOverlay').style.display = 'flex';
             document.getElementById('qrScannerStatus').innerText = t('starting_camera');
 
@@ -2618,12 +2623,20 @@
                 this.callbacks = { data: [], open: [], close: [], error: [] };
                 this.isClosed = false;
                 this.lastPolledStatus = 'waiting';
-                this.pollInterval = setInterval(() => this.poll(), 1200);
+                this.pollTimeout = null;
+                this.schedulePoll(role === 'sender' ? 1000 : 50);
                 setTimeout(() => this.emit('open', this), 50);
+            }
+
+            schedulePoll(delay) {
+                if (this.isClosed) return;
+                if (this.pollTimeout) clearTimeout(this.pollTimeout);
+                this.pollTimeout = setTimeout(() => this.poll(), delay);
             }
 
             async poll() {
                 if (this.isClosed) return;
+                let nextDelay = (this.role === 'sender' && this.lastPolledStatus === 'transferring') ? 500 : 1000;
                 try {
                     const action = this.role === 'sender' ? 'poll_sender' : 'poll_receiver';
                     const res = await fetch('/api/relay', {
@@ -2631,7 +2644,10 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ roomId: this.roomId, action })
                     });
-                    if (!res.ok) return;
+                    if (!res.ok) {
+                        this.schedulePoll(2000);
+                        return;
+                    }
                     const data = await res.json();
 
                     if (data.status === 'cancelled' && this.lastPolledStatus !== 'cancelled') {
@@ -2675,6 +2691,7 @@
                         if (data.chunkAck && data.status === 'transferring' && this.lastChunkIndexAcked !== this.currentChunkIndex) {
                             this.lastChunkIndexAcked = this.currentChunkIndex;
                             // Acknowledge chunk
+                            nextDelay = 50; 
                             this.emit('data', { type: 'next-chunk' });
                         }
 
@@ -2694,7 +2711,7 @@
                             this.emit('data', { type: 'start' });
                         }
 
-                        if (data.chunk && data.chunk.index !== this.lastReceivedChunkIndex) {
+                        if (data.chunk && data.chunk.index === this.lastReceivedChunkIndex + 1) {
                             this.lastReceivedChunkIndex = data.chunk.index;
 
                             const buffer = base64ToArrayBuffer(data.chunk.data);
@@ -2713,11 +2730,14 @@
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ roomId: this.roomId, action: 'ack_chunk' })
-                            }).then(() => setTimeout(() => this.poll(), 50));
+                            }).then(() => this.schedulePoll(50));
+                            nextDelay = 2000; // Wait for ack to be processed or next poll
+                            return; // Wait for fetch return to schedule next
                         }
                     }
                     this.lastPolledStatus = data.status;
                 } catch (err) { }
+                this.schedulePoll(nextDelay);
             }
 
             async send(data) {
@@ -2783,7 +2803,7 @@
             close() {
                 this.isClosed = true;
                 this.open = false;
-                clearInterval(this.pollInterval);
+                if (this.pollTimeout) clearTimeout(this.pollTimeout);
                 this.emit('close');
             }
 

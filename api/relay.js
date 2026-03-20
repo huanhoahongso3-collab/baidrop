@@ -48,6 +48,7 @@ export default function handler(req, res) {
                 status: 'waiting',
                 pendingRequest: requestData || null,
                 currentChunk: null,
+                currentChunkIndex: -1,
                 lastSeen: now
             });
             return res.status(200).json({ success: true });
@@ -86,8 +87,12 @@ export default function handler(req, res) {
 
         if (action === 'send_chunk') {
             if (t.status !== 'accepted' && t.status !== 'transferring') return res.status(400).json({ error: 'Invalid state' });
+            // Allow re-sending same chunk or next chunk
+            if (chunkData.index < t.currentChunkIndex) return res.status(200).json({ success: true, warning: 'Old chunk ignored' });
+            
             t.status = 'transferring';
             t.currentChunk = { ...chunkData, ack: false };
+            t.currentChunkIndex = chunkData.index;
             return res.status(200).json({ success: true });
         }
 
