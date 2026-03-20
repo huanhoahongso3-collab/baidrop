@@ -968,7 +968,7 @@
                         <span class="material-icons-round">qr_code_2</span>
                         <span data-t="share_qr">Share through QR</span>
                     </button>
-                    <button class="btn btn-filled" onclick="showQRScanner(); closeSelectionTypeDialog();"
+                    <button class="btn btn-filled" onclick="scanOfflineQR(); closeSelectionTypeDialog();"
                         style="display: flex; align-items: center; justify-content: center; gap: 8px;">
                         <span class="material-icons-round">qr_code_scanner</span>
                         <span data-t="receive_qr">Receive via QR</span>
@@ -1285,7 +1285,7 @@
             saveSetting('baidrop-name', myNameValue);
         }
         let myName = myNameValue;
-        let myAvatar = getSetting('baidrop-avatar') || 'leak_add';
+        let myAvatar = getSetting('baidrop-avatar') || 'default';
         let myId = getSetting('baidrop-id') || null;
         let myIpHash = 'global';
         let peers = new Map();
