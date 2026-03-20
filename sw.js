@@ -47,10 +47,29 @@ self.addEventListener('fetch', (event) => {
 
     event.respondWith(
         caches.open(CACHE_NAME).then((cache) => {
+            let cacheWon = false;
+
             const fetchPromise = fetch(event.request).then((networkResponse) => {
                 const isSuccessful = networkResponse.status === 200;
                 const isOpaque = networkResponse.status === 0;
                 
+                if (isSuccessful) {
+                    const accept = event.request.headers.get('accept') || '';
+                    if (accept.includes('text/html') || event.request.url.includes('index.html')) {
+                        cache.match(event.request).then(cachedRes => {
+                            if (cachedRes) {
+                                Promise.all([cachedRes.clone().text(), networkResponse.clone().text()]).then(([oldText, newText]) => {
+                                    if (oldText !== newText && cacheWon) {
+                                        self.clients.matchAll({ type: 'window' }).then(clients => {
+                                            clients.forEach(c => c.navigate(c.url));
+                                        });
+                                    }
+                                });
+                            }
+                        });
+                    }
+                }
+
                 if (isSuccessful || isOpaque) {
                     cache.put(event.request, networkResponse.clone());
                 }
@@ -65,7 +84,10 @@ self.addEventListener('fetch', (event) => {
                 }
 
                 const timeoutPromise = new Promise((resolve) => {
-                    setTimeout(() => resolve(cachedResponse), 5000);
+                    setTimeout(() => {
+                        cacheWon = true;
+                        resolve(cachedResponse);
+                    }, 5000);
                 });
 
                 return Promise.race([
