@@ -901,7 +901,7 @@
 
             </div>
             <div class="modal-actions">
-                <button class="btn btn-text" onclick="closeAvatarOverlay()">Close</button>
+                <button class="btn btn-text" onclick="closeAvatarOverlay()" data-t="close">Close</button>
             </div>
         </div>
     </div>
@@ -925,7 +925,7 @@
                 </div>
             </div>
             <div class="modal-actions">
-                <button class="btn btn-text" onclick="closeSelectionTypeDialog()">Cancel</button>
+                <button class="btn btn-text" onclick="closeSelectionTypeDialog()" data-t="cancel">Cancel</button>
             </div>
         </div>
     </div>
@@ -981,7 +981,7 @@
                 </div>
             </div>
             <div class="modal-actions">
-                <button class="btn btn-text" onclick="closeAccentOverlay()">Close</button>
+                <button class="btn btn-text" onclick="closeAccentOverlay()" data-t="close">Close</button>
             </div>
         </div>
     </div>
@@ -1068,7 +1068,10 @@
                 scan_answer: 'Scan Answer',
                 share_offline: 'Share Offline',
                 share_online: 'Share Online',
-                scanner_active: 'Scanner active.'
+                scanner_active: 'Scanner active.',
+                qr_display_status: 'Ask the receiver to scan this code or open the link.\n\nA prompt will appear when they join.',
+                starting_camera: 'Starting camera...',
+                close: 'Close'
             },
             vi: {
                 hero_title: 'Gửi tệp ngay lập tức.',
@@ -1120,7 +1123,10 @@
                 scan_answer: 'Quét câu trả lời',
                 share_offline: 'Chia sẻ Ngoại tuyến',
                 share_online: 'Chia sẻ Trực tuyến',
-                scanner_active: 'Máy quét đang hoạt động.'
+                scanner_active: 'Máy quét đang hoạt động.',
+                qr_display_status: 'Yêu cầu người nhận quét mã này hoặc mở liên kết.\n\nThông báo sẽ xuất hiện khi họ tham gia.',
+                starting_camera: 'Đang khởi động máy ảnh...',
+                close: 'Đóng'
             }
         };
 
@@ -2415,7 +2421,7 @@
 
         function scanOfflineQR() {
             document.getElementById('qrScannerOverlay').style.display = 'flex';
-            document.getElementById('qrScannerStatus').innerText = 'Starting camera...';
+            document.getElementById('qrScannerStatus').innerText = t('starting_camera');
 
             if (!qrScannerInstance) {
                 qrScannerInstance = new Html5Qrcode("qrReader");
@@ -2737,6 +2743,14 @@
                     return;
                 }
                 
+                if (data.type === 'response') {
+                    await fetch('/api/relay', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ roomId: this.roomId, action: data.accepted ? 'accept' : 'cancel' })
+                    });
+                    return;
+                }
+
                 if (data.type === 'transfer-complete') {
                     await fetch('/api/relay', {
                         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -2790,7 +2804,7 @@
                     correctLevel: QRCode.CorrectLevel.L
                 });
 
-                document.getElementById('qrDisplayStatus').innerText = 'Ask the receiver to scan this code or open the link.\n\nA prompt will appear when they join.';
+                document.getElementById('qrDisplayStatus').innerText = t('qr_display_status');
             });
             customConn.on('data', (data) => handleConnectionData(customConn, data));
         }
