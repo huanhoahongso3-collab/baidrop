@@ -817,12 +817,12 @@
                 <div id="qrScannerStatus" style="font-size:12px; opacity:0.7;" data-t="waiting_for_camera">Waiting for
                     camera...</div>
             </div>
-            <div class="modal-actions" style="justify-content: space-between;">
-                <button class="btn btn-text" onclick="switchCamera()" style="gap:4px;">
+            <div class="modal-actions" style="justify-content: space-between; display: flex !important; width: 100%;">
+                <button class="btn btn-text" onclick="switchCamera()" style="gap:8px; display:inline-flex !important; padding: 0 16px;">
                     <span class="material-icons-round">flip_camera_ios</span>
                     <span data-t="switch_camera">Switch Camera</span>
                 </button>
-                <button class="btn btn-text no-shade" onclick="closeQRScanner()" data-t="cancel">Cancel</button>
+                <button class="btn btn-text no-shade" onclick="closeQRScanner()" data-t="cancel" style="padding: 0 16px;">Cancel</button>
             </div>
         </div>
     </div>
@@ -2429,21 +2429,14 @@
         }
 
         function minifySDP(sdp) {
-            return sdp.split(/\r?\n/)
-                .map(line => line.trim())
-                .filter(line => {
-                    if (line.startsWith('a=candidate')) return line.includes('typ host');
-                    if (line.startsWith('a=extmap')) return false;
-                    if (line.startsWith('a=msid')) return false;
-                    if (line.startsWith('a=ssrc')) return false;
-                    if (line.startsWith('a=rtcp-fb')) return false;
-                    if (line.startsWith('a=fmtp')) return false;
-                    if (line.startsWith('a=rtpmap')) return false;
-                    if (line.startsWith('a=rtcp-mux')) return false;
-                    // Keep essential lines
-                    return line.length > 0;
-                })
-                .join('\n');
+            const keep = [
+                'v=', 'o=', 's=', 't=', 'm=application', 'c=IN', 'a=ice-ufrag',
+                'a=ice-pwd', 'a=fingerprint', 'a=setup', 'a=mid', 'a=sctp-port'
+            ];
+            return sdp.split('\n').filter(line => {
+                if (line.startsWith('a=candidate') && line.includes('host')) return true;
+                return keep.some(k => line.startsWith(k));
+            }).map(l => l.trim()).join('\n');
         }
 
         function expandSDP(minified) {
@@ -2479,29 +2472,45 @@
             const offer = await offlinePeerConnection.createOffer();
             await offlinePeerConnection.setLocalDescription(offer);
 
-            // Wait for ICE gathering
-            await new Promise(r => setTimeout(r, 600));
+            // Wait for ICE gathering with a timeout to avoid hangs on slow networks
+            await new Promise(r => {
+                const timeout = setTimeout(r, 600); // 600ms gathering limit
+                offlinePeerConnection.onicegatheringstatechange = () => {
+                    if (offlinePeerConnection.iceGatheringState === 'complete') {
+                        clearTimeout(timeout);
+                        r();
+                    }
+                };
+            });
 
-            const offerData = JSON.stringify(offlinePeerConnection.localDescription);
             const shortId = Math.random().toString(36).substring(2, 8);
-            
-            try {
-                await fetch('/api/relay', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'store_sdp', roomId: shortId, sdp: offerData })
-                });
-            } catch (e) {
-                console.warn('Relay failed:', e);
-            }
+            const fullSDP = JSON.stringify(offlinePeerConnection.localDescription);
+            const minSdpData = { type: 'offer', sdp: minifySDP(offlinePeerConnection.localDescription.sdp) };
 
-            // Using shorter search params for smallest possible QR
-            currentOfflineString = window.location.origin + window.location.pathname + '?o=' + shortId;
+            let compressedOffer = '';
+            try {
+                // Background store (silent fail if offline)
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 2000);
+
+                fetch('/api/relay', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'store_sdp', roomId: shortId, sdp: fullSDP }),
+                    signal: controller.signal
+                }).catch(() => { });
+
+                compressedOffer = await compressString(JSON.stringify(minSdpData));
+            } catch (e) { }
+
+            // Hybrid QR: BD1:UUID:CompressedSDP
+            // This ensures it works with relay IF available, but contains EVERYTHING for offline scan too.
+            currentOfflineString = "BD1:" + shortId + ":" + (compressedOffer || "");
 
             document.getElementById('qrcodeDisplay').innerHTML = '';
             new QRCode(document.getElementById('qrcodeDisplay'), {
                 text: currentOfflineString,
-                width: 256,
-                height: 256,
+                width: 280, // Slightly larger for complexity
+                height: 280,
                 correctLevel: QRCode.CorrectLevel.L
             });
             document.getElementById('qrDisplayStatus').innerText = t('qr_offline_help');
@@ -2512,14 +2521,14 @@
         async function switchCamera() {
             if (!qrScannerInstance) return;
             currentFacingMode = (currentFacingMode === "environment") ? "user" : "environment";
-            
+
             try {
                 if (qrScannerInstance.isScanning) {
                     await qrScannerInstance.stop();
                 }
                 const statusEl = document.getElementById('qrScannerStatus');
                 if (statusEl) statusEl.innerText = t('starting_camera');
-                
+
                 // Re-start with new mode
                 // We recreate the function here instead of a global one to keep dependencies simple
                 startScannerWithFacingMode(currentFacingMode);
@@ -2544,7 +2553,7 @@
             startScannerWithFacingMode = (facingModeStr) => {
                 const facingModeOpt = { facingMode: facingModeStr };
                 currentFacingMode = facingModeStr;
-                
+
                 qrScannerInstance.start(
                     facingModeOpt,
                     { fps: 10, qrbox: { width: 250, height: 250 } },
@@ -2591,11 +2600,31 @@
                     return;
                 }
 
-                if (text.match(/[\?#](o|offer)=/) || text.includes('BDO:') || text.includes('BD_OFFER:')) {
+                if (text.match(/[\?#](o|offer)=/) || text.includes('BDO:') || text.startsWith('BD_OFFER:') || text.startsWith('BD1:')) {
                     closeQRScanner();
 
                     let sdpString = '';
-                    if (text.includes('BDO:') || text.startsWith('BD_OFFER:')) {
+                    if (text.startsWith('BD1:')) {
+                        const parts = text.split(':');
+                        const shortId = parts[1];
+                        const compressed = parts[2];
+
+                        if (compressed) {
+                            const decompressed = await decompressString(compressed);
+                            const obj = JSON.parse(decompressed);
+                            if (obj.sdp && !obj.sdp.includes('\n')) obj.sdp = expandSDP(obj.sdp);
+                            sdpString = JSON.stringify(obj);
+                        } else {
+                            // Offline fallback to relay
+                            const response = await fetch('/api/relay', {
+                                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ action: 'get_sdp', roomId: shortId })
+                            });
+                            const resData = await response.json();
+                            if (!resData.sdp) throw new Error('Cannot fetch SDP from relay and no SDP in QR');
+                            sdpString = resData.sdp;
+                        }
+                    } else if (text.includes('BDO:') || text.startsWith('BD_OFFER:')) {
                         const prefix = text.includes('BDO:') ? 'BDO:' : 'BD_OFFER:';
                         const part = text.split(prefix)[1];
                         const decompressed = await decompressString(part);
@@ -2632,18 +2661,34 @@
                     const answer = await offlinePeerConnection.createAnswer();
                     await offlinePeerConnection.setLocalDescription(answer);
 
-                    await new Promise(r => setTimeout(r, 600));
+                    await new Promise(r => {
+                        const timeout = setTimeout(r, 600);
+                        offlinePeerConnection.onicegatheringstatechange = () => {
+                            if (offlinePeerConnection.iceGatheringState === 'complete') {
+                                clearTimeout(timeout);
+                                r();
+                            }
+                        };
+                    });
 
-                    const answerData = JSON.stringify(offlinePeerConnection.localDescription);
+                    const fullAnswer = JSON.stringify(offlinePeerConnection.localDescription);
+                    const minAnsw = { type: 'answer', sdp: minifySDP(offlinePeerConnection.localDescription.sdp) };
                     const ansId = Math.random().toString(36).substring(2, 8);
+
+                    let compressedAnsw = '';
                     try {
-                        await fetch('/api/relay', {
+                        const controller = new AbortController();
+                        const timeout = setTimeout(() => controller.abort(), 2000);
+                        fetch('/api/relay', {
                             method: 'POST', headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ action: 'store_sdp', roomId: ansId, sdp: answerData })
-                        });
+                            body: JSON.stringify({ action: 'store_sdp', roomId: ansId, sdp: fullAnswer }),
+                            signal: controller.signal
+                        }).catch(() => { });
+
+                        compressedAnsw = await compressString(JSON.stringify(minAnsw));
                     } catch (e) { }
 
-                    currentOfflineString = window.location.origin + window.location.pathname + '?a=' + ansId;
+                    currentOfflineString = "BD1:" + ansId + ":" + (compressedAnsw || "");
 
                     // Show Answer QR
                     updateUI();
@@ -2652,24 +2697,38 @@
                     document.getElementById('qrcodeDisplay').innerHTML = '';
                     new QRCode(document.getElementById('qrcodeDisplay'), {
                         text: currentOfflineString,
-                        width: 256,
-                        height: 256,
+                        width: 280,
+                        height: 280,
                         correctLevel: QRCode.CorrectLevel.L
                     });
                     document.getElementById('qrDisplayStatus').innerText = t('qr_answer_help');
                     document.getElementById('scanAnswerBtn').style.display = 'none';
 
                 } else if (text.match(/[\?#](a|answer)=/) || text.includes('BDA:') || text.includes('BD_ANSWER:')) {
+                    // This block handles legacy answer URLs too
                     closeQRScanner();
 
                     let sdpString = '';
-                    if (text.includes('BDA:') || text.startsWith('BD_ANSWER:')) {
+                    // Handle BD1: for answers if needed (though sender usually handles BD1: above)
+                    if (text.startsWith('BD1:')) {
+                        const parts = text.split(':');
+                        const compressed = parts[2];
+                        if (compressed) {
+                             const decompressed = await decompressString(compressed);
+                             sdpString = JSON.stringify(JSON.parse(decompressed));
+                        } else {
+                             const response = await fetch('/api/relay', {
+                                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ action: 'get_sdp', roomId: parts[1] })
+                             });
+                             const resData = await response.json();
+                             sdpString = resData.sdp;
+                        }
+                    } else if (text.includes('BDA:') || text.startsWith('BD_ANSWER:')) {
                         const prefix = text.includes('BDA:') ? 'BDA:' : 'BD_ANSWER:';
                         const part = text.split(prefix)[1];
                         const decompressed = await decompressString(part);
-                        const obj = JSON.parse(decompressed);
-                        if (obj.sdp && !obj.sdp.includes('\n')) obj.sdp = expandSDP(obj.sdp);
-                        sdpString = JSON.stringify(obj);
+                        sdpString = JSON.stringify(JSON.parse(decompressed));
                     } else {
                         const url = new URL(text.replace('#', '?'));
                         const ansId = url.searchParams.get('a') || url.searchParams.get('answer');
@@ -2682,11 +2741,11 @@
                         sdpString = resData.sdp;
                     }
                     const answerDesc = JSON.parse(sdpString);
+                    if (answerDesc.sdp && !answerDesc.sdp.includes('\n')) answerDesc.sdp = expandSDP(answerDesc.sdp);
                     await offlinePeerConnection.setRemoteDescription(answerDesc);
                     closeQRDisplay();
                 } else {
-                    alert('Invalid Bái Drop QR Code.');
-                    closeQRScanner();
+                    alert('Invalid Bái Drop QR Code format.');
                 }
             } catch (err) {
                 console.error("QR Error:", err);
