@@ -770,11 +770,11 @@
                     onclick="clearSelection()">close</span>
             </div>
             <button id="qrShareBtn" class="btn btn-filled" style="display:none; gap:8px; align-items:center;"
-                onclick="hostOfflineQR()">
+                onclick="hostOfflineQR()" data-t="share_offline">
                 <span class="material-icons-round">qr_code_2</span> Share Offline
             </button>
             <button id="onlineShareBtn" class="btn btn-text"
-                style="display:none; gap:8px; align-items:center; margin-top:-8px;" onclick="hostOnlineShare()">
+                style="display:none; gap:8px; align-items:center; margin-top:-8px;" onclick="hostOnlineShare()" data-t="share_online">
                 <span class="material-icons-round">cloud_upload</span> Share Online
             </button>
         </div>
@@ -1065,7 +1065,10 @@
                 waiting_for_camera: 'Waiting for camera...',
                 qr_help: 'Ask the receiver to scan this code or open the link.',
                 copy_link: 'Copy as Link',
-                scan_answer: 'Scan Answer'
+                scan_answer: 'Scan Answer',
+                share_offline: 'Share Offline',
+                share_online: 'Share Online',
+                scanner_active: 'Scanner active.'
             },
             vi: {
                 hero_title: 'Gửi tệp ngay lập tức.',
@@ -1114,7 +1117,10 @@
                 waiting_for_camera: 'Đang chờ máy ảnh...',
                 qr_help: 'Yêu cầu người nhận quét mã này hoặc mở liên kết.',
                 copy_link: 'Sao chép liên kết',
-                scan_answer: 'Quét câu trả lời'
+                scan_answer: 'Quét câu trả lời',
+                share_offline: 'Chia sẻ Ngoại tuyến',
+                share_online: 'Chia sẻ Trực tuyến',
+                scanner_active: 'Máy quét đang hoạt động.'
             }
         };
 
@@ -1903,7 +1909,15 @@
                 currentConnection.send({ type: 'response', accepted: true });
             } else {
                 currentConnection.send({ type: 'response', accepted: false });
-                currentConnection.close();
+                setTimeout(() => {
+                    if (currentConnection) {
+                        currentConnection.close();
+                        currentConnection = null;
+                    }
+                    transferOverlay.style.display = 'none';
+                    document.body.classList.remove('modal-open');
+                    resetTransferState();
+                }, 500);
             }
         }
 
@@ -1933,61 +1947,71 @@
 
         let chunkAckResolver = null;
         async function beginChunkedSend() {
-            transferStatus.innerText = t('sending');
-            const CHUNK_SIZE = currentConnection.isOnlineRelay ? (2 * 1024 * 1024) : (64 * 1024);
-            const startTime = Date.now();
-            const totalSize = selectedFiles.reduce((sum, f) => sum + f.size, 0);
-            let totalUploadedBeforeCurrentFile = 0;
+            try {
+                transferStatus.innerText = t('sending');
+                const CHUNK_SIZE = currentConnection.isOnlineRelay ? (2 * 1024 * 1024) : (64 * 1024);
+                const startTime = Date.now();
+                const totalSize = selectedFiles.reduce((sum, f) => sum + f.size, 0);
+                let totalUploadedBeforeCurrentFile = 0;
 
-            transferStartTime = startTime;
-            receivedStartTime = startTime;
+                transferStartTime = startTime;
+                receivedStartTime = startTime;
 
-            for (let i = 0; i < selectedFiles.length; i++) {
-                const file = selectedFiles[i];
-                let offset = 0;
+                for (let i = 0; i < selectedFiles.length; i++) {
+                    const file = selectedFiles[i];
+                    let offset = 0;
 
-                document.getElementById('transferTitle').innerText = `${t('sending')} (${i + 1}/${selectedFiles.length})`;
-                document.getElementById('transferStatus').innerText = file.name;
+                    document.getElementById('transferTitle').innerText = `${t('sending')} (${i + 1}/${selectedFiles.length})`;
+                    document.getElementById('transferStatus').innerText = file.name;
 
-                while (offset < file.size) {
-                    if (!currentConnection || !currentConnection.open) throw new Error('Connection lost');
+                    while (offset < file.size) {
+                        if (!currentConnection || !currentConnection.open) throw new Error('Connection lost');
 
-                    const slice = file.slice(offset, offset + CHUNK_SIZE);
-                    const chunkData = await slice.arrayBuffer();
-                    const currentOffset = offset;
-                    offset += chunkData.byteLength;
+                        const slice = file.slice(offset, offset + CHUNK_SIZE);
+                        const chunkData = await slice.arrayBuffer();
+                        const currentOffset = offset;
+                        offset += chunkData.byteLength;
 
-                    currentConnection.send({
-                        type: 'file-chunk',
-                        data: chunkData,
-                        offset: currentOffset,
-                        fileIndex: i,
-                        isLastChunk: offset >= file.size,
-                        isLastFile: (i === selectedFiles.length - 1) && (offset >= file.size)
-                    });
+                        currentConnection.send({
+                            type: 'file-chunk',
+                            data: chunkData,
+                            offset: currentOffset,
+                            fileIndex: i,
+                            isLastChunk: offset >= file.size,
+                            isLastFile: (i === selectedFiles.length - 1) && (offset >= file.size)
+                        });
 
-                    // WAIT for receiver to acknowledge this chunk
-                    await new Promise(resolve => {
-                        chunkAckResolver = resolve;
-                        setTimeout(() => { if (chunkAckResolver === resolve) { chunkAckResolver = null; resolve(); } }, currentConnection.isOnlineRelay ? 30000 : 5000);
-                    });
+                        // WAIT for receiver to acknowledge this chunk
+                        await new Promise(resolve => {
+                            chunkAckResolver = resolve;
+                            setTimeout(() => { if (chunkAckResolver === resolve) { chunkAckResolver = null; resolve(); } }, currentConnection.isOnlineRelay ? 30000 : 5000);
+                        });
 
-                    // Local calculation for cumulative progress
-                    const buffered = currentConnection.dataChannel ? currentConnection.dataChannel.bufferedAmount : 0;
-                    const realUploadedInCurrentFile = Math.max(0, offset - buffered);
-                    const cumulativeUploaded = totalUploadedBeforeCurrentFile + realUploadedInCurrentFile;
-                    updateProgress(Math.min(99, (cumulativeUploaded / totalSize) * 100), cumulativeUploaded, startTime);
+                        // Local calculation for cumulative progress
+                        const buffered = currentConnection.dataChannel ? currentConnection.dataChannel.bufferedAmount : 0;
+                        const realUploadedInCurrentFile = Math.max(0, offset - buffered);
+                        const cumulativeUploaded = totalUploadedBeforeCurrentFile + realUploadedInCurrentFile;
+                        updateProgress(Math.min(99, (cumulativeUploaded / totalSize) * 100), cumulativeUploaded, startTime);
+                    }
+                    totalUploadedBeforeCurrentFile += file.size;
                 }
-                totalUploadedBeforeCurrentFile += file.size;
-            }
 
-            // Wait for data channel to clear
-            transferStatus.innerText = 'Finishing...';
-            while (currentConnection && currentConnection.open && currentConnection.dataChannel && currentConnection.dataChannel.bufferedAmount > 0) {
-                const buffered = currentConnection.dataChannel.bufferedAmount;
-                const cumulativeUploaded = totalSize - buffered;
-                updateProgress(Math.min(99.9, (cumulativeUploaded / totalSize) * 100), cumulativeUploaded, startTime);
-                await new Promise(r => setTimeout(r, 100));
+                // Wait for data channel to clear
+                transferStatus.innerText = 'Finishing...';
+                while (currentConnection && currentConnection.open && currentConnection.dataChannel && currentConnection.dataChannel.bufferedAmount > 0) {
+                    const buffered = currentConnection.dataChannel.bufferedAmount;
+                    const cumulativeUploaded = totalSize - buffered;
+                    updateProgress(Math.min(99.9, (cumulativeUploaded / totalSize) * 100), cumulativeUploaded, startTime);
+                    await new Promise(r => setTimeout(r, 100));
+                }
+            } catch (err) {
+                console.error('Send error:', err);
+                if (transferOverlay.style.display === 'flex') {
+                    alert(t('error_connection') + ': ' + (err.message || err));
+                    transferOverlay.style.display = 'none';
+                    document.body.classList.remove('modal-open');
+                    resetTransferState();
+                }
             }
         }
 
@@ -2103,7 +2127,7 @@
                     document.body.classList.remove('modal-open');
                     hasPressedStart = false;
                     otherHasPressedStart = false;
-                }, 100);
+                }, 500);
             } else {
                 transferOverlay.classList.remove('modal-waiting');
                 transferOverlay.style.display = 'none';
@@ -2407,7 +2431,7 @@
                     },
                     (err) => { /* ignore standard read failures */ }
                 ).then(() => {
-                    document.getElementById('qrScannerStatus').innerText = 'Scanner active.';
+                    document.getElementById('qrScannerStatus').innerText = t('scanner_active');
                 }).catch(err => {
                     // If preferred environment fails (like on PCs), fallback to user (webcam)
                     if (facingModeOpt.facingMode === "environment") {
