@@ -47,21 +47,31 @@ self.addEventListener('fetch', (event) => {
 
     event.respondWith(
         caches.open(CACHE_NAME).then((cache) => {
+            const fetchPromise = fetch(event.request).then((networkResponse) => {
+                const isSuccessful = networkResponse.status === 200;
+                const isOpaque = networkResponse.status === 0;
+                
+                if (isSuccessful || isOpaque) {
+                    cache.put(event.request, networkResponse.clone());
+                }
+                return networkResponse;
+            }).catch((err) => {
+                throw err;
+            });
+
             return cache.match(event.request).then((cachedResponse) => {
-                const fetchedResponse = fetch(event.request).then((networkResponse) => {
-                    // Cache regular 200 responses AND opaque (status 0) responses from our known CDNs
-                    const isSuccessful = networkResponse.status === 200;
-                    const isOpaque = networkResponse.status === 0;
-                    
-                    if (isSuccessful || isOpaque) {
-                        cache.put(event.request, networkResponse.clone());
-                    }
-                    return networkResponse;
-                }).catch(() => {
-                    return cachedResponse;
+                if (!cachedResponse) {
+                    return fetchPromise;
+                }
+
+                const timeoutPromise = new Promise((resolve) => {
+                    setTimeout(() => resolve(cachedResponse), 5000);
                 });
 
-                return cachedResponse || fetchedResponse;
+                return Promise.race([
+                    fetchPromise.catch(() => cachedResponse),
+                    timeoutPromise
+                ]);
             });
         })
     );
