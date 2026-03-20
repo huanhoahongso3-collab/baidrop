@@ -1991,7 +1991,7 @@
         async function beginChunkedSend() {
             try {
                 transferStatus.innerText = t('sending');
-                const CHUNK_SIZE = 64 * 1024; // Safely set to 64KB. This avoids 'Message too large' errors while maintaining high throughput via bufferedAmount monitoring.
+                const CHUNK_SIZE = 506 * 1024;
                 const startTime = Date.now();
                 const totalSize = selectedFiles.reduce((sum, f) => sum + f.size, 0);
                 let totalUploadedBeforeCurrentFile = 0;
@@ -2448,50 +2448,20 @@
         let qrScannerInstance = null;
 
         async function hostOfflineQR() {
-            if (selectedFiles.length === 0) return;
+            if (selectedFiles.length === 0) { alert(t('initial_prompt')); return; }
+            if (!myId) { alert('PeerJS not initialized. Check internet/local connection.'); return; }
 
             updateUI();
             document.getElementById('qrDisplayOverlay').style.display = 'flex';
-            document.getElementById('qrcodeDisplay').innerHTML = '<div style="padding:20px;">Generating Security Keys...</div>';
+            document.getElementById('qrcodeDisplay').innerHTML = '';
             document.getElementById('qrDisplayTitle').innerText = t('hosting_offline');
+            document.getElementById('qrDisplayStatus').innerText = t('qr_offline_help');
             document.getElementById('scanAnswerBtn').style.display = 'none';
 
-            offlinePeerConnection = new RTCPeerConnection({ iceServers: [] });
+            // Just use the PeerJS ID in the QR code.
+            // This is tiny and uses the robust PeerJS engine (same as Nearby Devices).
+            currentOfflineString = window.location.origin + window.location.pathname + '?p=' + myId;
 
-            const dataChannel = offlinePeerConnection.createDataChannel('baidrop-offline-channel', { negotiated: true, id: 0 });
-            const customConn = new OfflineDataConnection(dataChannel, 'offline-receiver');
-
-            currentConnection = customConn;
-            transferRole = 'sender';
-
-            customConn.on('open', () => {
-                closeQRDisplay();
-                startSendRequest(customConn.peer);
-            });
-            customConn.on('data', (data) => handleConnectionData(customConn, data));
-
-            const offer = await offlinePeerConnection.createOffer();
-            await offlinePeerConnection.setLocalDescription(offer);
-
-            // Wait for ICE gathering
-            await new Promise(r => setTimeout(r, 600));
-
-            const offerData = JSON.stringify(offlinePeerConnection.localDescription);
-            const shortId = Math.random().toString(36).substring(2, 8);
-
-            try {
-                await fetch('/api/relay', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'store_sdp', roomId: shortId, sdp: offerData })
-                });
-            } catch (e) {
-                console.warn('Relay failed:', e);
-            }
-
-            // Using shorter search params for smallest possible QR
-            currentOfflineString = window.location.origin + window.location.pathname + '?o=' + shortId;
-
-            document.getElementById('qrcodeDisplay').innerHTML = '';
             new QRCode(document.getElementById('qrcodeDisplay'), {
                 text: currentOfflineString,
                 width: 256,
@@ -2550,127 +2520,37 @@
 
         async function handleOfflineQRScanned(text) {
             try {
-                // Robust parameter extraction for URLs, hashes, and plain strings
+                // Universal param extractor
                 const getParam = (t, p) => {
                     try {
                         const url = new URL(t.startsWith('http') ? t : 'https://' + t.replace(/^\/+/, ''));
                         return url.searchParams.get(p) || url.hash.split(p + '=')[1];
                     } catch (e) {
-                        const match = t.match(new RegExp(`[?&#]${p}=([a-z0-9]+)`, 'i'));
+                        const match = t.match(new RegExp(`[?&#]${p}=([a-z0-9-]+)`, 'i'));
                         return match ? match[1] : null;
                     }
                 };
 
-                if (text.includes('online=')) {
-                    const onlineId = getParam(text, 'online');
-                    if (onlineId) {
-                        closeQRScanner();
-                        window.location.href = window.location.origin + window.location.pathname + '?online=' + onlineId;
-                        return;
-                    }
-                }
+                const peerId = getParam(text, 'p') || getParam(text, 'peer');
+                const onlineId = getParam(text, 'online');
 
-                // Check for Offer (?o=, ?offer=, BDO:)
-                const offerId = getParam(text, 'o') || getParam(text, 'offer');
-                const isOffer = offerId || text.includes('BDO:') || text.startsWith('BD_OFFER:');
-
-                if (isOffer) {
+                if (onlineId) {
                     closeQRScanner();
-                    let sdpString = '';
-                    if (text.includes('BDO:') || text.startsWith('BD_OFFER:')) {
-                        const prefix = text.includes('BDO:') ? 'BDO:' : 'BD_OFFER:';
-                        const part = text.split(prefix)[1];
-                        const decompressed = await decompressString(part);
-                        const obj = JSON.parse(decompressed);
-                        if (obj.sdp && !obj.sdp.includes('\n')) obj.sdp = expandSDP(obj.sdp);
-                        sdpString = JSON.stringify(obj);
-                    } else {
-                        const response = await fetch('/api/relay', {
-                            method: 'POST', headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ action: 'get_sdp', roomId: offerId })
-                        });
-                        const resData = await response.json();
-                        if (!resData.sdp) throw new Error('Offer SDP not found on relay');
-                        sdpString = resData.sdp;
-                    }
-                    const offerDesc = JSON.parse(sdpString);
-
-                    offlinePeerConnection = new RTCPeerConnection({ iceServers: [] });
-                    const dataChannel = offlinePeerConnection.createDataChannel('baidrop-offline-channel', { negotiated: true, id: 0 });
-                    const customConn = new OfflineDataConnection(dataChannel, 'offline-sender');
-
-                    currentConnection = customConn;
-                    transferRole = 'receiver';
-                    customConn.on('open', () => {
-                        closeQRDisplay();
-                        closeQRScanner();
-                        customConn.send({ type: 'hello', name: myName, avatar: myAvatar });
-                    });
-                    customConn.on('data', (data) => handleConnectionData(customConn, data));
-
-                    await offlinePeerConnection.setRemoteDescription(offerDesc);
-                    const answer = await offlinePeerConnection.createAnswer();
-                    await offlinePeerConnection.setLocalDescription(answer);
-
-                    await new Promise(r => setTimeout(r, 600)); // Gather local ICE
-
-                    const answerData = JSON.stringify(offlinePeerConnection.localDescription);
-                    const ansId = Math.random().toString(36).substring(2, 8);
-                    try {
-                        await fetch('/api/relay', {
-                            method: 'POST', headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ action: 'store_sdp', roomId: ansId, sdp: answerData })
-                        });
-                    } catch (e) { }
-
-                    currentOfflineString = window.location.origin + window.location.pathname + '?a=' + ansId;
-
-                    // Show Answer QR
-                    updateUI();
-                    document.getElementById('qrDisplayOverlay').style.display = 'flex';
-                    document.getElementById('qrDisplayTitle').innerText = t('answer_generated');
-                    document.getElementById('qrcodeDisplay').innerHTML = '';
-                    new QRCode(document.getElementById('qrcodeDisplay'), {
-                        text: currentOfflineString,
-                        width: 256,
-                        height: 256,
-                        correctLevel: QRCode.CorrectLevel.L
-                    });
-                    document.getElementById('qrDisplayStatus').innerText = t('qr_answer_help');
-                    document.getElementById('scanAnswerBtn').style.display = 'none';
-
-                } else {
-                    // Check for Answer (?a=, ?answer=, BDA:)
-                    const answerId = getParam(text, 'a') || getParam(text, 'answer');
-                    const isAnswer = answerId || text.includes('BDA:') || text.startsWith('BD_ANSWER:');
-
-                    if (isAnswer) {
-                        closeQRScanner();
-                        let sdpString = '';
-                        if (text.includes('BDA:') || text.startsWith('BD_ANSWER:')) {
-                            const prefix = text.includes('BDA:') ? 'BDA:' : 'BD_ANSWER:';
-                            const part = text.split(prefix)[1];
-                            const decompressed = await decompressString(part);
-                            const obj = JSON.parse(decompressed);
-                            if (obj.sdp && !obj.sdp.includes('\n')) obj.sdp = expandSDP(obj.sdp);
-                            sdpString = JSON.stringify(obj);
-                        } else {
-                            const response = await fetch('/api/relay', {
-                                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ action: 'get_sdp', roomId: answerId })
-                            });
-                            const resData = await response.json();
-                            if (!resData.sdp) throw new Error('Answer SDP not found on relay');
-                            sdpString = resData.sdp;
-                        }
-                        const answerDesc = JSON.parse(sdpString);
-                        await offlinePeerConnection.setRemoteDescription(answerDesc);
-                        closeQRDisplay();
-                    } else {
-                        alert('Invalid Bái Drop QR Code.');
-                        closeQRScanner();
-                    }
+                    window.location.href = window.location.origin + window.location.pathname + '?online=' + onlineId;
+                    return;
                 }
+
+                if (peerId) {
+                    closeQRScanner();
+                    // Initiation connection via PeerJS (robust, handles handshake/signaling)
+                    // The receiver (one who scanned) becomes the one 'connecting' to the sender.
+                    startSendRequest(peerId);
+                    return;
+                }
+
+                alert('Invalid Bái Drop QR Code.');
+                closeQRScanner();
+
             } catch (err) {
                 console.error('Offline QR Error:', err);
                 alert('QR Invalid or Connection Failed: ' + (err.message || ''));
