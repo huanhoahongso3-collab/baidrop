@@ -2558,7 +2558,7 @@
                     return;
                 }
 
-                if (text.includes('?o=') || text.includes('?offer=') || text.includes('BDO:') || text.startsWith('BD_OFFER:')) {
+                if (text.match(/[\?#](o|offer)=/) || text.includes('BDO:') || text.includes('BD_OFFER:')) {
                     closeQRScanner();
 
                     let sdpString = '';
@@ -2570,7 +2570,7 @@
                         if (obj.sdp && !obj.sdp.includes('\n')) obj.sdp = expandSDP(obj.sdp);
                         sdpString = JSON.stringify(obj);
                     } else {
-                        const url = new URL(text.replace('#o=', '?o='));
+                        const url = new URL(text.replace('#', '?'));
                         const shortId = url.searchParams.get('o') || url.searchParams.get('offer');
                         const response = await fetch('/api/relay', {
                             method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -2626,7 +2626,7 @@
                     document.getElementById('qrDisplayStatus').innerText = t('qr_answer_help');
                     document.getElementById('scanAnswerBtn').style.display = 'none';
 
-                } else if (text.includes('?a=') || text.includes('?answer=') || text.includes('BDA:') || text.startsWith('BD_ANSWER:')) {
+                } else if (text.match(/[\?#](a|answer)=/) || text.includes('BDA:') || text.includes('BD_ANSWER:')) {
                     closeQRScanner();
 
                     let sdpString = '';
@@ -2638,7 +2638,7 @@
                         if (obj.sdp && !obj.sdp.includes('\n')) obj.sdp = expandSDP(obj.sdp);
                         sdpString = JSON.stringify(obj);
                     } else {
-                        const url = new URL(text.replace('#a=', '?a='));
+                        const url = new URL(text.replace('#', '?'));
                         const ansId = url.searchParams.get('a') || url.searchParams.get('answer');
                         const response = await fetch('/api/relay', {
                             method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -2657,7 +2657,7 @@
                 }
             } catch (err) {
                 console.error("QR Error:", err);
-                alert('Connection Failed: ' + (err.message || 'Unknown Error'));
+                alert('Connection Failed: ' + (err.message || 'Unknown Error') + '\nScanned: ' + text);
                 closeQRScanner();
             }
         }
