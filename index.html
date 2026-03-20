@@ -773,8 +773,7 @@
                 onclick="hostOfflineQR()" data-t="share_offline">
                 <span class="material-icons-round">qr_code_2</span> Share Offline
             </button>
-            <button id="onlineShareBtn" class="btn btn-text"
-                style="display:none; gap:8px; align-items:center; margin-top:-8px;" onclick="hostOnlineShare()"
+            <button id="onlineShareBtn" class="btn btn-text" style="display: none;" onclick="hostOnlineShare()"
                 data-t="share_online">
                 <span class="material-icons-round">cloud_upload</span> Share Online
             </button>
@@ -1992,7 +1991,7 @@
         async function beginChunkedSend() {
             try {
                 transferStatus.innerText = t('sending');
-                const CHUNK_SIZE = currentConnection.isOnlineRelay ? (512 * 1024) : (256 * 1024);
+                const CHUNK_SIZE = 512 * 1024; // Standardized to 512KB for both modes for max speed
                 const startTime = Date.now();
                 const totalSize = selectedFiles.reduce((sum, f) => sum + f.size, 0);
                 let totalUploadedBeforeCurrentFile = 0;
@@ -2014,6 +2013,18 @@
                         const chunkData = await slice.arrayBuffer();
                         const currentOffset = offset;
                         offset += chunkData.byteLength;
+
+                        // Throttle sending if the buffer is too full (for offline connections)
+                        if (!currentConnection.isOnlineRelay && currentConnection.dataChannel.bufferedAmount > 1024 * 1024) {
+                            await new Promise(resolve => {
+                                const interval = setInterval(() => {
+                                    if (currentConnection.dataChannel.bufferedAmount < 768 * 1024) {
+                                        clearInterval(interval);
+                                        resolve();
+                                    }
+                                }, 10);
+                            });
+                        }
 
                         currentConnection.send({
                             type: 'file-chunk',
