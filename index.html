@@ -2482,7 +2482,7 @@
             const pwd = sdp.match(/a=ice-pwd:(.+)/)?.[1]?.trim();
             const fingerprint = sdp.match(/a=fingerprint:sha-256 (.+)/)?.[1]?.trim();
             // Candidate line: a=candidate:[foundation] [comp] [proto] [priority] [ip] [port] typ host ...
-            const cand = sdp.match(/a=candidate:\S+ \d+ \S+ \d+ ([0-9a-f\.\:]+) (\d+) typ host/i);
+            const cand = sdp.match(/a=candidate:\S+ \d+ \S+ \d+ (\S+) (\d+) typ host/i);
             const ip = cand?.[1];
             const port = cand?.[2];
             
@@ -2550,7 +2550,7 @@
 
             // Wait for ICE gathering with a timeout
             await new Promise(r => {
-                const timeout = setTimeout(r, 600);
+                const timeout = setTimeout(r, 1500);
                 offlinePeerConnection.onicegatheringstatechange = () => {
                     if (offlinePeerConnection.iceGatheringState === 'complete') {
                         clearTimeout(timeout);
@@ -2740,7 +2740,7 @@
                     await offlinePeerConnection.setLocalDescription(answer);
 
                     await new Promise(r => {
-                        const timeout = setTimeout(r, 600);
+                        const timeout = setTimeout(r, 1500);
                         offlinePeerConnection.onicegatheringstatechange = () => {
                             if (offlinePeerConnection.iceGatheringState === 'complete') {
                                 clearTimeout(timeout);
@@ -3248,7 +3248,7 @@
             if (qrSerialInterval) clearInterval(qrSerialInterval);
             qrSerialInterval = setInterval(() => {
                 if (qrSerialAutoPlay) nextSerialQR();
-            }, 400);
+            }, 800);
         }
 
         function toggleQRAutoPlay() {
@@ -3259,7 +3259,7 @@
         function updateQRAutoPlayUI() {
             const btn = document.getElementById('qrAutoPlayBtn');
             btn.innerHTML = `<span class="material-icons-round">${qrSerialAutoPlay ? 'pause' : 'play_arrow'}</span>`;
-            document.getElementById('qrSerialSpeed').innerText = qrSerialAutoPlay ? 'Auto-playing every 400ms' : 'Paused - Press Play to cycle';
+            document.getElementById('qrSerialSpeed').innerText = qrSerialAutoPlay ? 'Auto-playing every 800ms' : 'Paused - Press Play to cycle';
         }
 
         function closeQRSerialOverlay() {
