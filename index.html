@@ -966,7 +966,12 @@
                     <button class="btn btn-filled" onclick="triggerQRSerialSend()"
                         style="display: flex; align-items: center; justify-content: center; gap: 8px;">
                         <span class="material-icons-round">qr_code_2</span>
-                        <span data-t="share_qr">Share via QR</span>
+                        <span data-t="share_qr">Share through QR</span>
+                    </button>
+                    <button class="btn btn-filled" onclick="showQRScanner(); closeSelectionTypeDialog();"
+                        style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        <span class="material-icons-round">qr_code_scanner</span>
+                        <span data-t="receive_qr">Receive via QR</span>
                     </button>
                 </div>
             </div>
@@ -1174,7 +1179,9 @@
                 switch_camera: 'Switch Camera',
                 invalid_qr: 'Connection Failed. QR is for setup only, files will share over local WiFi.',
                 share_qr: 'Share through QR',
-                sharing_qr: 'Sharing through QR'
+                sharing_qr: 'Sharing through QR',
+                receive_qr: 'Receive via QR',
+                qr_send_tutorial: 'Please ask the receiver to select "Receive via QR" and point their camera at your screen before you press OK to start.'
             },
             vi: {
                 hero_title: 'Gửi tệp ngay lập tức.',
@@ -1239,7 +1246,9 @@
                 switch_camera: 'Đổi Camera',
                 invalid_qr: 'Kết nối thất bại. QR chỉ để thiết lập, tệp sẽ được chia sẻ qua WiFi cục bộ.',
                 share_qr: 'Chia sẻ qua QR',
-                sharing_qr: 'Đang chia sẻ qua QR'
+                sharing_qr: 'Đang chia sẻ qua QR',
+                receive_qr: 'Nhận qua QR',
+                qr_send_tutorial: 'Vui lòng yêu cầu người nhận chọn "Nhận qua QR" và hướng máy ảnh vào màn hình của bạn trước khi nhấn OK để bắt đầu.'
             }
         };
 
@@ -3144,6 +3153,10 @@
                 
                 qrSerialIndex = 0;
                 qrSerialAutoPlay = true;
+
+                // Tutorial alert
+                alert(t('qr_send_tutorial'));
+
                 document.getElementById('qrSerialOverlay').style.display = 'flex';
                 document.body.classList.add('modal-open');
                 updateQRAutoPlayUI();
