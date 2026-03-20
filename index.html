@@ -2625,7 +2625,7 @@
 
                 qrScannerInstance.start(
                     facingModeOpt,
-                    { fps: 10 },
+                    { fps: 15, formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ] },
                     async (decodedText) => {
                         document.getElementById('qrScannerStatus').innerText = 'Code scanned, processing...';
                         if (decodedText.startsWith('QS:')) {
@@ -2677,7 +2677,7 @@
 
                 qrSerialScannerInstance.start(
                     facingModeOpt,
-                    { fps: 10 },
+                    { fps: 15, formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ] },
                     async (decodedText) => {
                         let res = await handleSerialQRScanned(decodedText);
                         if (!res) {
@@ -3349,16 +3349,17 @@
         };
 
         async function handleSerialQRScanned(content) {
+            content = content.trim();
             if (!content.startsWith('QS:')) return false;
             
-            const filenameRegex = /^QS:([^:]+):(\d+):(\d+):(.*)$/;
+            const filenameRegex = /^QS:([^:]+):(\d+):(\d+):([\s\S]*)$/;
             const match = content.match(filenameRegex);
             if (!match) return false;
             
             const filename = decodeURIComponent(match[1]);
             const total = parseInt(match[2]);
             const index = parseInt(match[3]);
-            const data = match[4];
+            const data = match[4].trim();
 
             if (!qrReceiveData.active || qrReceiveData.filename !== filename) {
                 // New file or session
