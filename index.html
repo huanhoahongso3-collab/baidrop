@@ -3141,7 +3141,7 @@
             try {
                 const compressed = await compressFile(file);
                 const base64 = uint8ArrayToBase64(compressed);
-                const chunkSize = 1000; 
+                const chunkSize = 2000; 
                 qrSerialChunks = [];
                 const total = Math.ceil(base64.length / chunkSize);
                 const filename = encodeURIComponent(file.name);
@@ -3152,7 +3152,7 @@
                 }
                 
                 qrSerialIndex = 0;
-                qrSerialAutoPlay = true;
+                qrSerialAutoPlay = false;
 
                 // Tutorial alert
                 alert(t('qr_send_tutorial'));
@@ -3206,6 +3206,7 @@
         function updateQRAutoPlayUI() {
             const btn = document.getElementById('qrAutoPlayBtn');
             btn.innerHTML = `<span class="material-icons-round">${qrSerialAutoPlay ? 'pause' : 'play_arrow'}</span>`;
+            document.getElementById('qrSerialSpeed').innerText = qrSerialAutoPlay ? 'Auto-playing every 400ms' : 'Paused - Press Play to cycle';
         }
 
         function closeQRSerialOverlay() {
