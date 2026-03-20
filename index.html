@@ -811,7 +811,7 @@
     <!-- Overlay: QR Scanner -->
     <div class="overlay" id="qrScannerOverlay">
         <div class="modal">
-            <div class="modal-title">Scan Offline QR</div>
+            <div class="modal-title" data-t="scan_qr">Scan QR</div>
             <div class="modal-content" style="display:flex; flex-direction:column; align-items:center; gap:16px;">
                 <div id="qrReader" style="width:100%; max-width:300px; border-radius:12px; overflow:hidden;"></div>
                 <div id="qrScannerStatus" style="font-size:12px; opacity:0.7;">Waiting for camera...</div>
@@ -911,18 +911,18 @@
     <!-- Overlay: Selection Type Dialog -->
     <div class="overlay" id="selectionTypeOverlay" onclick="if(event.target===this)closeSelectionTypeDialog()">
         <div class="modal">
-            <div class="modal-title">Select Upload Type</div>
+            <div class="modal-title" data-t="upload_type">Select Upload Type</div>
             <div class="modal-content">
                 <div style="display: flex; flex-direction: column; gap: 16px;">
                     <button class="btn btn-filled" onclick="triggerFileInput('file')"
                         style="display: flex; align-items: center; justify-content: center; gap: 8px;">
                         <span class="material-icons-round">description</span>
-                        Files
+                        <span data-t="files">Files</span>
                     </button>
                     <button class="btn btn-filled" onclick="triggerFileInput('folder')"
                         style="display: flex; align-items: center; justify-content: center; gap: 8px;">
                         <span class="material-icons-round">folder</span>
-                        Folder
+                        <span data-t="folder">Folder</span>
                     </button>
                 </div>
             </div>
@@ -1051,6 +1051,10 @@
                 ready_to_send: 'Ready to Send',
                 ready_to_receive: 'Ready to Receive',
                 initial_prompt: 'Please select a file first using the + button.',
+                scan_qr: 'Scan QR',
+                upload_type: 'Select Upload Type',
+                files: 'Files',
+                folder: 'Folder',
                 cancelled: 'Transfer cancelled by the other party.',
                 cancel: 'Cancel',
                 theme_auto: 'Auto',
@@ -1091,6 +1095,10 @@
                 ready_to_send: 'Sẵn sàng gửi',
                 ready_to_receive: 'Sẵn sàng nhận',
                 initial_prompt: 'Vui lòng chọn tệp trước bằng nút +.',
+                scan_qr: 'Quét mã QR',
+                upload_type: 'Chọn loại tải lên',
+                files: 'Tệp tin',
+                folder: 'Thư mục',
                 cancelled: 'Chuyển đã bị hủy bởi đối phương.',
                 cancel: 'Hủy',
                 theme_auto: 'Tự động',
