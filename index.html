@@ -963,10 +963,62 @@
                         <span class="material-icons-round">folder</span>
                         <span data-t="folder">Folder</span>
                     </button>
+                    <button class="btn btn-filled" onclick="triggerQRSerialSend()"
+                        style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        <span class="material-icons-round">qr_code_2</span>
+                        <span data-t="share_qr">Share via QR</span>
+                    </button>
                 </div>
             </div>
             <div class="modal-actions">
                 <button class="btn btn-text" onclick="closeSelectionTypeDialog()" data-t="cancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overlay: QR Serial Sender -->
+    <div class="overlay" id="qrSerialOverlay" onclick="if(event.target===this)closeQRSerialOverlay()">
+        <div class="modal">
+            <div class="modal-title" data-t="sharing_qr">Sharing through QR</div>
+            <div class="modal-content">
+                <div id="qrSerialDisplay" style="display:flex; justify-content:center; margin-bottom:16px; min-height: 250px; align-items: center;"></div>
+                <div id="qrSerialProgress" style="text-align:center; font-family:var(--font-main); font-weight:500; font-size:14px;">
+                    Block 0 / 0
+                </div>
+                <div class="progress-container" style="margin-top:12px;">
+                    <div class="progress-bar" id="qrSerialProgressBar" style="width: 0%;"></div>
+                </div>
+                <div id="qrSerialSpeed" style="text-align:center; font-size:12px; margin-top:8px; opacity:0.7;">
+                    Auto-playing every 400ms
+                </div>
+            </div>
+            <div class="modal-actions" style="display:flex; justify-content:space-between; align-items:center;">
+                <div style="display:flex; gap:8px;">
+                    <button class="btn btn-icon" style="width:40px; height:40px; background-color:var(--md-sys-color-secondary-container); color:var(--md-sys-color-on-secondary-container); border-radius:12px; display:flex; align-items:center; justify-content:center;" onclick="prevSerialQR()"><span class="material-icons-round">chevron_left</span></button>
+                    <button class="btn btn-icon" id="qrAutoPlayBtn" style="width:40px; height:40px; background-color:var(--md-sys-color-primary-container); color:var(--md-sys-color-on-primary-container); border-radius:12px; display:flex; align-items:center; justify-content:center;" onclick="toggleQRAutoPlay()"><span class="material-icons-round">play_arrow</span></button>
+                    <button class="btn btn-icon" style="width:40px; height:40px; background-color:var(--md-sys-color-secondary-container); color:var(--md-sys-color-on-secondary-container); border-radius:12px; display:flex; align-items:center; justify-content:center;" onclick="nextSerialQR()"><span class="material-icons-round">chevron_right</span></button>
+                </div>
+                <button class="btn btn-text" onclick="closeQRSerialOverlay()" data-t="close">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overlay: QR Serial Receiver -->
+    <div class="overlay" id="qrSerialReceiveOverlay">
+        <div class="modal">
+            <div class="modal-title">Receiving via QR</div>
+            <div class="modal-content">
+                <div id="qrSerialReceiveFilename" style="font-weight:bold; text-align:center; margin-bottom:8px; word-break: break-all;"></div>
+                <div id="qrSerialReceiveProgress" style="text-align:center; font-size:14px;">Block 0 / 0</div>
+                <div class="progress-container" style="margin-top:12px;">
+                    <div class="progress-bar" id="qrSerialReceiveProgressBar" style="width: 0%;"></div>
+                </div>
+                <div style="font-size:12px; opacity:0.7; text-align:center; margin-top:12px;">
+                    Keep the sender's QR codes in view.<br>Scanner is working automatically.
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-text" onclick="cancelQRSerialReceive()" data-t="cancel">Cancel</button>
             </div>
         </div>
     </div>
@@ -1120,7 +1172,9 @@
                 answer_generated: 'Answer Generated',
                 qr_answer_help: 'Ask the Host to scan this connection Answer.',
                 switch_camera: 'Switch Camera',
-                invalid_qr: 'Connection Failed. QR is for setup only, files will share over local WiFi.'
+                invalid_qr: 'Connection Failed. QR is for setup only, files will share over local WiFi.',
+                share_qr: 'Share through QR',
+                sharing_qr: 'Sharing through QR'
             },
             vi: {
                 hero_title: 'Gửi tệp ngay lập tức.',
@@ -1183,7 +1237,9 @@
                 qr_answer_help: 'Yêu cầu người chủ trì quét câu trả lời kết nối này.',
                 mqtt_error: 'Không thể kết nối với máy chủ MQTT. Chức năng thiết bị lân cận sẽ không hoạt động.',
                 switch_camera: 'Đổi Camera',
-                invalid_qr: 'Kết nối thất bại. QR chỉ để thiết lập, tệp sẽ được chia sẻ qua WiFi cục bộ.'
+                invalid_qr: 'Kết nối thất bại. QR chỉ để thiết lập, tệp sẽ được chia sẻ qua WiFi cục bộ.',
+                share_qr: 'Chia sẻ qua QR',
+                sharing_qr: 'Đang chia sẻ qua QR'
             }
         };
 
@@ -2595,6 +2651,8 @@
                     return;
                 }
 
+                if (await handleSerialQRScanned(text)) return;
+
                 if (text.startsWith('BDS:')) {
                     // Super-minified Offer
                     closeQRScanner();
@@ -3007,6 +3065,222 @@
                     .then(reg => console.log('Service Worker registered', reg))
                     .catch(err => console.error('Service Worker registration failed', err));
             });
+        }
+
+        // --- SHARE THROUGH QR MODE ---
+        let qrSerialChunks = [];
+        let qrSerialIndex = 0;
+        let qrSerialInterval = null;
+        let qrSerialAutoPlay = true;
+        let qrSerialDisplayEl = null;
+
+        async function triggerQRSerialSend() {
+            closeSelectionTypeDialog();
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                if (file.size > 10 * 1024 * 1024) {
+                    alert('Max file size is 10MB for QR mode.');
+                    return;
+                }
+                await startQRSerialSend(file);
+            };
+            input.click();
+        }
+
+        async function compressFile(file) {
+            const stream = file.stream().pipeThrough(new CompressionStream('gzip'));
+            const response = new Response(stream);
+            const blob = await response.blob();
+            return new Uint8Array(await blob.arrayBuffer());
+        }
+
+        async function decompressData(data) {
+            try {
+                const stream = new Blob([data]).stream().pipeThrough(new DecompressionStream('gzip'));
+                const response = new Response(stream);
+                const blob = await response.blob();
+                return new Uint8Array(await blob.arrayBuffer());
+            } catch (e) {
+                console.error("Decompression failed", e);
+                return data; // Fallback to raw if not gzip
+            }
+        }
+
+        function uint8ArrayToBase64(bytes) {
+            let binary = '';
+            const len = bytes.byteLength;
+            for (let i = 0; i < len; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return btoa(binary);
+        }
+
+        function base64ToUint8Array(base64) {
+            const binary = atob(base64);
+            const len = binary.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binary.charCodeAt(i);
+            }
+            return bytes;
+        }
+
+        async function startQRSerialSend(file) {
+            try {
+                const compressed = await compressFile(file);
+                const base64 = uint8ArrayToBase64(compressed);
+                const chunkSize = 1000; 
+                qrSerialChunks = [];
+                const total = Math.ceil(base64.length / chunkSize);
+                const filename = encodeURIComponent(file.name);
+                
+                for (let i = 0; i < total; i++) {
+                    const data = base64.substring(i * chunkSize, (i + 1) * chunkSize);
+                    qrSerialChunks.push(`QS:${filename}:${total}:${i}:${data}`);
+                }
+                
+                qrSerialIndex = 0;
+                qrSerialAutoPlay = true;
+                document.getElementById('qrSerialOverlay').style.display = 'flex';
+                document.body.classList.add('modal-open');
+                updateQRAutoPlayUI();
+                renderSerialQR();
+                startSerialQRLoop();
+            } catch (e) {
+                console.error(e);
+                alert('Error processing file.');
+            }
+        }
+
+        function renderSerialQR() {
+            const container = document.getElementById('qrSerialDisplay');
+            container.innerHTML = '';
+            new QRCode(container, {
+                text: qrSerialChunks[qrSerialIndex],
+                width: 250,
+                height: 250,
+                correctLevel: QRCode.CorrectLevel.L
+            });
+            document.getElementById('qrSerialProgress').innerText = `Block ${qrSerialIndex + 1} / ${qrSerialChunks.length}`;
+            document.getElementById('qrSerialProgressBar').style.width = ((qrSerialIndex + 1) / qrSerialChunks.length * 100) + '%';
+        }
+
+        function nextSerialQR() {
+            qrSerialIndex = (qrSerialIndex + 1) % qrSerialChunks.length;
+            renderSerialQR();
+        }
+
+        function prevSerialQR() {
+            qrSerialIndex = (qrSerialIndex - 1 + qrSerialChunks.length) % qrSerialChunks.length;
+            renderSerialQR();
+        }
+
+        function startSerialQRLoop() {
+            if (qrSerialInterval) clearInterval(qrSerialInterval);
+            qrSerialInterval = setInterval(() => {
+                if (qrSerialAutoPlay) nextSerialQR();
+            }, 400);
+        }
+
+        function toggleQRAutoPlay() {
+            qrSerialAutoPlay = !qrSerialAutoPlay;
+            updateQRAutoPlayUI();
+        }
+
+        function updateQRAutoPlayUI() {
+            const btn = document.getElementById('qrAutoPlayBtn');
+            btn.innerHTML = `<span class="material-icons-round">${qrSerialAutoPlay ? 'pause' : 'play_arrow'}</span>`;
+        }
+
+        function closeQRSerialOverlay() {
+            if (qrSerialInterval) clearInterval(qrSerialInterval);
+            document.getElementById('qrSerialOverlay').style.display = 'none';
+            document.body.classList.remove('modal-open');
+        }
+
+        // RECEIVER SIDE logic
+        let qrReceiveData = {
+            filename: null,
+            total: 0,
+            chunks: new Map(),
+            active: false
+        };
+
+        async function handleSerialQRScanned(content) {
+            if (!content.startsWith('QS:')) return false;
+            
+            const parts = content.split(':');
+            if (parts.length < 5) return false;
+            
+            const filename = decodeURIComponent(parts[1]);
+            const total = parseInt(parts[2]);
+            const index = parseInt(parts[3]);
+            const data = parts[4];
+
+            if (!qrReceiveData.active || qrReceiveData.filename !== filename) {
+                // New file or session
+                qrReceiveData = {
+                    filename: filename,
+                    total: total,
+                    chunks: new Map(),
+                    active: true
+                };
+                document.getElementById('qrSerialReceiveOverlay').style.display = 'flex';
+                document.getElementById('qrSerialReceiveFilename').innerText = filename;
+                document.body.classList.add('modal-open');
+            }
+
+            if (!qrReceiveData.chunks.has(index)) {
+                qrReceiveData.chunks.set(index, data);
+                updateQRReceiveProgress();
+                
+                if (qrReceiveData.chunks.size === qrReceiveData.total) {
+                    await completeQRReceive();
+                }
+            }
+            return true;
+        }
+
+        function updateQRReceiveProgress() {
+            const count = qrReceiveData.chunks.size;
+            const total = qrReceiveData.total;
+            document.getElementById('qrSerialReceiveProgress').innerText = `Block ${count} / ${total}`;
+            document.getElementById('qrSerialReceiveProgressBar').style.width = (count / total * 100) + '%';
+        }
+
+        async function completeQRReceive() {
+            const { filename, total, chunks } = qrReceiveData;
+            qrReceiveData.active = false;
+            
+            // Reassemble
+            let fullBase64 = '';
+            for (let i = 0; i < total; i++) {
+                fullBase64 += chunks.get(i);
+            }
+            
+            const compressed = base64ToUint8Array(fullBase64);
+            const decompressed = await decompressData(compressed);
+            
+            const blob = new Blob([decompressed]);
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            document.getElementById('qrSerialReceiveOverlay').style.display = 'none';
+            document.body.classList.remove('modal-open');
+            alert(t('received_success'));
+        }
+
+        function cancelQRSerialReceive() {
+            qrReceiveData.active = false;
+            document.getElementById('qrSerialReceiveOverlay').style.display = 'none';
+            document.body.classList.remove('modal-open');
         }
     </script>
 </body>
