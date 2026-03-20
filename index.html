@@ -825,10 +825,10 @@
     <!-- Overlay: QR Display -->
     <div class="overlay" id="qrDisplayOverlay">
         <div class="modal">
-            <div class="modal-title" id="qrDisplayTitle">Hosting Offline</div>
+            <div class="modal-title" id="qrDisplayTitle" data-t="hosting_offline">Hosting Offline</div>
             <div class="modal-content" style="display:flex; flex-direction:column; align-items:center; gap:16px;">
                 <div id="qrcodeDisplay" style="padding:16px; background:white; border-radius:8px;"></div>
-                <div id="qrDisplayStatus" style="font-size:12px; opacity:0.7; text-align:center;" data-t="qr_help">Ask the receiver to tap the Scanner icon and scan this code.</div>
+                <div id="qrDisplayStatus" style="font-size:12px; opacity:0.7; text-align:center;" data-t="qr_offline_help">Ask the receiver to tap the Scanner icon and scan this code.</div>
 
                 <!-- URL Shared Button -->
                 <button class="btn btn-text no-shade" id="copyOfflineLinkBtn" onclick="copyOfflineLink()"
@@ -837,7 +837,7 @@
                 </button>
             </div>
             <div class="modal-actions">
-                <button class="btn btn-text no-shade" onclick="closeQRDisplay()">Cancel</button>
+                <button class="btn btn-text no-shade" onclick="closeQRDisplay()" data-t="cancel">Cancel</button>
                 <button class="btn btn-filled" id="scanAnswerBtn" onclick="closeQRDisplay(); scanOfflineQR();"
                     style="display:none;" data-t="scan_answer">Scan Answer</button>
             </div>
@@ -861,9 +861,9 @@
     <!-- Overlay: Transfer Modal -->
     <div class="overlay" id="transferOverlay">
         <div class="modal">
-            <div class="modal-title" id="transferTitle">Sending...</div>
+            <div class="modal-title" id="transferTitle" data-t="sending">Sending...</div>
             <div class="modal-content">
-                <div style="margin-bottom: 12px;" id="transferStatus">Connecting...</div>
+                <div style="margin-bottom: 12px;" id="transferStatus" data-t="connecting">Connecting...</div>
                 <div class="progress-container">
                     <div class="progress-bar" id="progressBar"></div>
                 </div>
@@ -1071,7 +1071,11 @@
                 scanner_active: 'Scanner active.',
                 qr_display_status: 'Ask the receiver to scan this code or open the link.\n\nA prompt will appear when they join.',
                 starting_camera: 'Starting camera...',
-                close: 'Close'
+                close: 'Close',
+                qr_offline_help: 'Ask the receiver to tap the Scanner icon and scan this code.\n\nThen, tap "Scan Answer" below to scan the code they generate.',
+                hosting_offline: 'Hosting Offline...',
+                hosting_online: 'Hosting Online...',
+                answer_generated: 'Answer Generated'
             },
             vi: {
                 hero_title: 'Gửi tệp ngay lập tức.',
@@ -1126,7 +1130,11 @@
                 scanner_active: 'Máy quét đang hoạt động.',
                 qr_display_status: 'Yêu cầu người nhận quét mã này hoặc mở liên kết.\n\nThông báo sẽ xuất hiện khi họ tham gia.',
                 starting_camera: 'Đang khởi động máy ảnh...',
-                close: 'Đóng'
+                close: 'Đóng',
+                qr_offline_help: 'Yêu cầu người nhận nhấn vào biểu tượng Trình quét và quét mã này.\n\nSau đó, nhấn "Quét phản hồi" bên dưới để quét mã họ tạo ra.',
+                hosting_offline: 'Đang lưu trữ ngoại tuyến...',
+                hosting_online: 'Đang lưu trữ trực tuyến...',
+                answer_generated: 'Đã tạo câu trả lời'
             }
         };
 
@@ -2376,7 +2384,7 @@
 
             document.getElementById('qrDisplayOverlay').style.display = 'flex';
             document.getElementById('qrcodeDisplay').innerHTML = '<div style="padding:20px;">Generating Security Keys...</div>';
-            document.getElementById('qrDisplayTitle').innerText = 'Hosting Offline...';
+            document.getElementById('qrDisplayTitle').innerText = t('hosting_offline');
             document.getElementById('scanAnswerBtn').style.display = 'none';
 
             offlinePeerConnection = new RTCPeerConnection({ iceServers: [] });
@@ -2415,7 +2423,7 @@
                 correctLevel: QRCode.CorrectLevel.L
             });
 
-            document.getElementById('qrDisplayStatus').innerText = 'Ask the receiver to tap the Scanner icon and scan this code.\n\nThen, tap "Scan Answer" below to scan the code they generate.';
+            document.getElementById('qrDisplayStatus').innerText = t('qr_offline_help');
             document.getElementById('scanAnswerBtn').style.display = 'block';
         }
 
@@ -2521,7 +2529,7 @@
 
                     // Show Answer QR for Sender to scan
                     document.getElementById('qrDisplayOverlay').style.display = 'flex';
-                    document.getElementById('qrDisplayTitle').innerText = 'Answer Generated';
+                    document.getElementById('qrDisplayTitle').innerText = t('answer_generated');
                     document.getElementById('qrcodeDisplay').innerHTML = '';
                     new QRCode(document.getElementById('qrcodeDisplay'), {
                         text: currentOfflineString,
@@ -2746,7 +2754,7 @@
                 if (data.type === 'response') {
                     await fetch('/api/relay', {
                         method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ roomId: this.roomId, action: data.accepted ? 'accept' : 'cancel' })
+                        body: JSON.stringify({ roomId: this.roomId, action: 'respond', accept: data.accepted })
                     });
                     return;
                 }
@@ -2776,7 +2784,7 @@
 
             document.getElementById('qrDisplayOverlay').style.display = 'flex';
             document.getElementById('qrcodeDisplay').innerHTML = '<div style="padding:20px;">Generating Online Room...</div>';
-            document.getElementById('qrDisplayTitle').innerText = 'Hosting Online...';
+            document.getElementById('qrDisplayTitle').innerText = t('hosting_online');
             document.getElementById('scanAnswerBtn').style.display = 'none';
 
             const roomId = Math.random().toString(36).substring(2, 9);
