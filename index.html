@@ -774,7 +774,8 @@
                 <span class="material-icons-round">qr_code_2</span> Share Offline
             </button>
             <button id="onlineShareBtn" class="btn btn-text"
-                style="display:none; gap:8px; align-items:center; margin-top:-8px;" onclick="hostOnlineShare()" data-t="share_online">
+                style="display:none; gap:8px; align-items:center; margin-top:-8px;" onclick="hostOnlineShare()"
+                data-t="share_online">
                 <span class="material-icons-round">cloud_upload</span> Share Online
             </button>
         </div>
@@ -814,7 +815,8 @@
             <div class="modal-title" data-t="scan_qr">Scan QR</div>
             <div class="modal-content" style="display:flex; flex-direction:column; align-items:center; gap:16px;">
                 <div id="qrReader" style="width:100%; max-width:300px; border-radius:12px; overflow:hidden;"></div>
-                <div id="qrScannerStatus" style="font-size:12px; opacity:0.7;" data-t="waiting_for_camera">Waiting for camera...</div>
+                <div id="qrScannerStatus" style="font-size:12px; opacity:0.7;" data-t="waiting_for_camera">Waiting for
+                    camera...</div>
             </div>
             <div class="modal-actions">
                 <button class="btn btn-text no-shade" onclick="closeQRScanner()">Cancel</button>
@@ -828,12 +830,14 @@
             <div class="modal-title" id="qrDisplayTitle" data-t="hosting_offline">Hosting Offline</div>
             <div class="modal-content" style="display:flex; flex-direction:column; align-items:center; gap:16px;">
                 <div id="qrcodeDisplay" style="padding:16px; background:white; border-radius:8px;"></div>
-                <div id="qrDisplayStatus" style="font-size:12px; opacity:0.7; text-align:center;" data-t="qr_offline_help">Ask the receiver to tap the Scanner icon and scan this code.</div>
+                <div id="qrDisplayStatus" style="font-size:12px; opacity:0.7; text-align:center;"
+                    data-t="qr_offline_help">Ask the receiver to tap the Scanner icon and scan this code.</div>
 
                 <!-- URL Shared Button -->
                 <button class="btn btn-text no-shade" id="copyOfflineLinkBtn" onclick="copyOfflineLink()"
                     style="margin-top:-8px;">
-                    <span class="material-icons-round" style="font-size:16px; margin-right:4px;">link</span> <span data-t="copy_link">Copy as Link</span>
+                    <span class="material-icons-round" style="font-size:16px; margin-right:4px;">link</span> <span
+                        data-t="copy_link">Copy as Link</span>
                 </button>
             </div>
             <div class="modal-actions">
@@ -1075,7 +1079,8 @@
                 qr_offline_help: 'Ask the receiver to tap the Scanner icon and scan this code.\n\nThen, tap "Scan Answer" below to scan the code they generate.',
                 hosting_offline: 'Hosting Offline...',
                 hosting_online: 'Hosting Online...',
-                answer_generated: 'Answer Generated'
+                answer_generated: 'Answer Generated',
+                qr_answer_help: 'Ask the Host to scan this connection Answer.'
             },
             vi: {
                 hero_title: 'Gửi tệp ngay lập tức.',
@@ -1134,7 +1139,8 @@
                 qr_offline_help: 'Yêu cầu người nhận nhấn vào biểu tượng Trình quét và quét mã này.\n\nSau đó, nhấn "Quét phản hồi" bên dưới để quét mã họ tạo ra.',
                 hosting_offline: 'Đang lưu trữ ngoại tuyến...',
                 hosting_online: 'Đang lưu trữ trực tuyến...',
-                answer_generated: 'Đã tạo câu trả lời'
+                answer_generated: 'Đã tạo câu trả lời',
+                qr_answer_help: 'Yêu cầu người chủ trì quét câu trả lời kết nối này.'
             }
         };
 
@@ -1963,7 +1969,7 @@
         async function beginChunkedSend() {
             try {
                 transferStatus.innerText = t('sending');
-                const CHUNK_SIZE = currentConnection.isOnlineRelay ? (2 * 1024 * 1024) : (64 * 1024);
+                const CHUNK_SIZE = currentConnection.isOnlineRelay ? (512 * 1024) : (64 * 1024);
                 const startTime = Date.now();
                 const totalSize = selectedFiles.reduce((sum, f) => sum + f.size, 0);
                 let totalUploadedBeforeCurrentFile = 0;
@@ -2018,6 +2024,7 @@
                     updateProgress(Math.min(99.9, (cumulativeUploaded / totalSize) * 100), cumulativeUploaded, startTime);
                     await new Promise(r => setTimeout(r, 100));
                 }
+                updateProgress(100, totalSize, startTime);
             } catch (err) {
                 console.error('Send error:', err);
                 if (transferOverlay.style.display === 'flex') {
@@ -2065,12 +2072,15 @@
                 const elapsed = (now - transferStartTime) / 1000;
                 const currentSpeed = elapsed > 0 ? (receivedSize / elapsed) : 0;
 
-                updateProgress(percent, receivedSize, transferStartTime);
+                const isFullyDone = data.isLastFile && data.isLastChunk;
+                const finalPercent = isFullyDone ? 100 : percent;
+
+                updateProgress(finalPercent, receivedSize, transferStartTime);
 
                 // Report ACTUAL receiver speed and progress back to sender
                 conn.send({
                     type: 'transfer-progress',
-                    progress: percent,
+                    progress: finalPercent,
                     bytes: receivedSize,
                     startTime: transferStartTime,
                     speed: currentSpeed
@@ -2382,6 +2392,7 @@
         async function hostOfflineQR() {
             if (selectedFiles.length === 0) return;
 
+            updateUI();
             document.getElementById('qrDisplayOverlay').style.display = 'flex';
             document.getElementById('qrcodeDisplay').innerHTML = '<div style="padding:20px;">Generating Security Keys...</div>';
             document.getElementById('qrDisplayTitle').innerText = t('hosting_offline');
@@ -2528,6 +2539,7 @@
                     currentOfflineString = window.location.origin + window.location.pathname + '?answer=' + ansId;
 
                     // Show Answer QR for Sender to scan
+                    updateUI();
                     document.getElementById('qrDisplayOverlay').style.display = 'flex';
                     document.getElementById('qrDisplayTitle').innerText = t('answer_generated');
                     document.getElementById('qrcodeDisplay').innerHTML = '';
@@ -2537,13 +2549,13 @@
                         height: 256,
                         correctLevel: QRCode.CorrectLevel.L
                     });
-                    document.getElementById('qrDisplayStatus').innerText = 'Ask the Host to scan this connection Answer.';
+                    document.getElementById('qrDisplayStatus').innerText = t('qr_answer_help');
                     document.getElementById('scanAnswerBtn').style.display = 'none';
 
                 } else if (text.includes('?answer=') || text.startsWith('BD_ANSWER:')) {
                     // Sender scanning Receiver's Answer
                     closeQRScanner();
-                    
+
                     let sdpString = '';
                     if (text.startsWith('BD_ANSWER:')) {
                         const compressedSDP = text.replace('BD_ANSWER:', '');
@@ -2559,7 +2571,7 @@
                         if (!resData.sdp) { alert('Answer expired.'); return; }
                         sdpString = resData.sdp;
                     }
-                    
+
                     const answerDesc = JSON.parse(sdpString);
 
                     await offlinePeerConnection.setRemoteDescription(answerDesc);
@@ -2625,13 +2637,12 @@
                     if (data.status === 'cancelled' && this.lastPolledStatus !== 'cancelled') {
                         this.emit('data', { type: 'cancel' });
                     }
-                    this.lastPolledStatus = data.status;
 
                     if (this.role === 'sender') {
                         if (data.receiver && !this.receiverSeen) {
                             this.receiverSeen = true;
 
-                            let avatarHtml = `<div class="peer-avatar" style="width:32px; height:32px; font-size:16px;">${(data.receiver.name||' ')[0].toUpperCase()}</div>`;
+                            let avatarHtml = `<div class="peer-avatar" style="width:32px; height:32px; font-size:16px;">${(data.receiver.name || ' ')[0].toUpperCase()}</div>`;
                             if (data.receiver.avatar && data.receiver.avatar !== 'default' && data.receiver.avatar !== 'airdrop') {
                                 if (data.receiver.avatar.startsWith('data:image')) {
                                     avatarHtml = `<div class="peer-avatar" style="width:32px; height:32px;"><img src="${data.receiver.avatar}" style="width:100%; height:100%; object-fit:cover; display:block;"></div>`;
@@ -2641,9 +2652,9 @@
                                     avatarHtml = `<div class="peer-avatar material-icons-round" style="width:32px; height:32px; font-size:18px;">${data.receiver.avatar}</div>`;
                                 }
                             }
-                            
+
                             closeQRDisplay();
-                            
+
                             document.body.classList.add('modal-open');
                             const to = document.getElementById('transferOverlay');
                             to.classList.add('modal-waiting');
@@ -2653,20 +2664,20 @@
                             progressBar().style.width = '0%';
                             document.getElementById('transferStatus').innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;">${avatarHtml} <span>${t('waiting_for')} ${data.receiver.name}...</span></div>`;
                         }
-                        
+
                         if (data.status === 'accepted' && !this.acceptedSeen) {
                             this.acceptedSeen = true;
                             // Trigger response logically
                             document.getElementById('transferOverlay').classList.remove('modal-waiting');
                             this.emit('data', { type: 'response', accepted: true });
                         }
-                        
+
                         if (data.chunkAck && data.status === 'transferring' && this.lastChunkIndexAcked !== this.currentChunkIndex) {
                             this.lastChunkIndexAcked = this.currentChunkIndex;
                             // Acknowledge chunk
                             this.emit('data', { type: 'next-chunk' });
                         }
-                        
+
                         if (data.status === 'completed' && this.lastPolledStatus !== 'completed') {
                             this.emit('data', { type: 'transfer-complete' });
                         }
@@ -2705,6 +2716,7 @@
                             }).then(() => setTimeout(() => this.poll(), 50));
                         }
                     }
+                    this.lastPolledStatus = data.status;
                 } catch (err) { }
             }
 
@@ -2750,7 +2762,7 @@
                     this.close();
                     return;
                 }
-                
+
                 if (data.type === 'response') {
                     await fetch('/api/relay', {
                         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -2782,6 +2794,7 @@
         async function hostOnlineShare() {
             if (selectedFiles.length === 0) return;
 
+            updateUI();
             document.getElementById('qrDisplayOverlay').style.display = 'flex';
             document.getElementById('qrcodeDisplay').innerHTML = '<div style="padding:20px;">Generating Online Room...</div>';
             document.getElementById('qrDisplayTitle').innerText = t('hosting_online');
