@@ -2548,9 +2548,10 @@
             const offer = await offlinePeerConnection.createOffer();
             await offlinePeerConnection.setLocalDescription(offer);
 
-            // Wait for ICE gathering with a timeout
+            // Wait for ICE gathering
             await new Promise(r => {
-                const timeout = setTimeout(r, 1500);
+                const timeout = setTimeout(r, 2000);
+                if (offlinePeerConnection.iceGatheringState === 'complete') r();
                 offlinePeerConnection.onicegatheringstatechange = () => {
                     if (offlinePeerConnection.iceGatheringState === 'complete') {
                         clearTimeout(timeout);
@@ -2559,15 +2560,15 @@
                 };
             });
 
-            const tokens = packSDP(offlinePeerConnection.localDescription.sdp);
-            if (!tokens) {
+            const sdpString = offlinePeerConnection.localDescription.sdp;
+            if (!sdpString.includes('a=candidate')) {
                 alert('Connection stalled. Please check network/camera permissions.');
                 closeQRDisplay();
                 return;
             }
 
-            // BDS = Bái Drop Small
-            currentOfflineString = "BDS:" + tokens;
+            const compressedSdp = await compressString(JSON.stringify(offlinePeerConnection.localDescription));
+            currentOfflineString = "BDC:" + compressedSdp;
 
             document.getElementById('qrcodeDisplay').innerHTML = '';
             new QRCode(document.getElementById('qrcodeDisplay'), {
@@ -2619,7 +2620,7 @@
 
                 qrScannerInstance.start(
                     facingModeOpt,
-                    { fps: 10, qrbox: { width: 250, height: 250 } },
+                    { fps: 10 },
                     async (decodedText) => {
                         document.getElementById('qrScannerStatus').innerText = 'Code scanned, processing...';
                         if (decodedText.startsWith('QS:')) {
@@ -2671,7 +2672,7 @@
 
                 qrSerialScannerInstance.start(
                     facingModeOpt,
-                    { fps: 10, qrbox: { width: 250, height: 250 } },
+                    { fps: 10 },
                     async (decodedText) => {
                         if (!await handleSerialQRScanned(decodedText)) {
                             document.getElementById('qrSerialScannerStatus').innerText = 'Scanning...';
@@ -2715,8 +2716,70 @@
                     return;
                 }
 
-                if (text.startsWith('BDS:')) {
-                    // Super-minified Offer
+                if (text.startsWith('BDC:')) {
+                    // Full compressed SDP Offer
+                    closeQRScanner();
+                    const compressedSdp = text.substring(4);
+                    const offerDescStr = await decompressString(compressedSdp);
+                    const offerDesc = JSON.parse(offerDescStr);
+
+                    offlinePeerConnection = new RTCPeerConnection({ iceServers: [] });
+                    const dataChannel = offlinePeerConnection.createDataChannel('baidrop-offline-channel', { negotiated: true, id: 0 });
+                    const customConn = new OfflineDataConnection(dataChannel, 'offline-sender');
+
+                    currentConnection = customConn;
+                    transferRole = 'receiver';
+                    customConn.on('open', () => {
+                        closeQRDisplay();
+                        closeQRScanner();
+                        customConn.send({ type: 'hello', name: myName, avatar: myAvatar });
+                    });
+                    customConn.on('data', (data) => handleConnectionData(customConn, data));
+
+                    await offlinePeerConnection.setRemoteDescription(offerDesc);
+                    const answer = await offlinePeerConnection.createAnswer();
+                    await offlinePeerConnection.setLocalDescription(answer);
+
+                    await new Promise(r => {
+                        const timeout = setTimeout(r, 2000);
+                        if (offlinePeerConnection.iceGatheringState === 'complete') r();
+                        offlinePeerConnection.onicegatheringstatechange = () => {
+                            if (offlinePeerConnection.iceGatheringState === 'complete') {
+                                clearTimeout(timeout);
+                                r();
+                            }
+                        };
+                    });
+
+                    const ansCompressedSdp = await compressString(JSON.stringify(offlinePeerConnection.localDescription));
+                    currentOfflineString = "BCA:" + ansCompressedSdp;
+
+                    // Show Answer QR
+                    updateUI();
+                    document.getElementById('qrDisplayOverlay').style.display = 'flex';
+                    document.getElementById('qrDisplayTitle').innerText = t('answer_generated');
+                    document.getElementById('qrcodeDisplay').innerHTML = '';
+                    new QRCode(document.getElementById('qrcodeDisplay'), {
+                        text: currentOfflineString,
+                        width: 350,
+                        height: 350,
+                        correctLevel: QRCode.CorrectLevel.L
+                    });
+                    document.getElementById('qrDisplayStatus').innerText = t('qr_answer_help');
+                    document.getElementById('scanAnswerBtn').style.display = 'none';
+
+                } else if (text.startsWith('BCA:')) {
+                    // Full compressed SDP Answer
+                    closeQRScanner();
+                    const compressedSdp = text.substring(4);
+                    const answerDescStr = await decompressString(compressedSdp);
+                    const answerDesc = JSON.parse(answerDescStr);
+
+                    await offlinePeerConnection.setRemoteDescription(answerDesc);
+                    closeQRDisplay();
+
+                } else if (text.startsWith('BDS:')) {
+                    // Fallback to older Small Offer
                     closeQRScanner();
                     const tokens = text.split('BDS:')[1];
                     const offerDesc = unpackSDP(tokens, 'offer');
