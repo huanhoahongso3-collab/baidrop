@@ -1991,7 +1991,7 @@
         async function beginChunkedSend() {
             try {
                 transferStatus.innerText = t('sending');
-                const CHUNK_SIZE = 256 * 1024; // Set to the 256KB (262144) maximum allowed limit for WebRTC
+                const CHUNK_SIZE = 160 * 1024; // Lowered to 160KB to stay safely under the 256KB hard limit including headers
                 const startTime = Date.now();
                 const totalSize = selectedFiles.reduce((sum, f) => sum + f.size, 0);
                 let totalUploadedBeforeCurrentFile = 0;
