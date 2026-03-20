@@ -968,7 +968,7 @@
                         <span class="material-icons-round">qr_code_2</span>
                         <span data-t="share_qr">Share through QR</span>
                     </button>
-                    <button class="btn btn-filled" onclick="scanOfflineQR(); closeSelectionTypeDialog();"
+                    <button class="btn btn-filled" onclick="scanSerialQR(); closeSelectionTypeDialog();"
                         style="display: flex; align-items: center; justify-content: center; gap: 8px;">
                         <span class="material-icons-round">qr_code_scanner</span>
                         <span data-t="receive_qr">Receive via QR</span>
@@ -2599,9 +2599,20 @@
             }
         }
 
-        let startScannerWithFacingMode = null; // Defined inside scanOfflineQR to share variables
+        let qrScannerTask = 'connection'; // 'connection' or 'serial'
+        let startScannerWithFacingMode = null;
 
         function scanOfflineQR() {
+            qrScannerTask = 'connection';
+            _openScannerUI();
+        }
+
+        function scanSerialQR() {
+            qrScannerTask = 'serial';
+            _openScannerUI();
+        }
+
+        function _openScannerUI() {
             updateUI();
             document.getElementById('qrScannerOverlay').style.display = 'flex';
             document.getElementById('qrScannerStatus').innerText = t('starting_camera');
@@ -2619,16 +2630,18 @@
                     { fps: 10, qrbox: { width: 250, height: 250 } },
                     async (decodedText) => {
                         document.getElementById('qrScannerStatus').innerText = 'Code scanned, processing...';
-                        await handleOfflineQRScanned(decodedText);
+                        await _handleScannedText(decodedText);
                     },
-                    (err) => { /* ignore standard read failures */ }
+                    (err) => { /* ignore */ }
                 ).then(() => {
                     document.getElementById('qrScannerStatus').innerText = t('scanner_active');
+                    if (qrScannerTask === 'serial') {
+                        document.getElementById('qrScannerStatus').innerText += ' (File Transfer Mode)';
+                    }
                 }).catch(err => {
-                    // If preferred environment fails (like on PCs), fallback to user (webcam)
                     if (facingModeOpt.facingMode === "environment") {
-                        try { qrScannerInstance.clear(); } catch (e) { } // Attempt safe cleanup
-                        qrScannerInstance = new Html5Qrcode("qrReader"); // Re-instantiate to avoid corrupted internal state
+                        try { qrScannerInstance.clear(); } catch (e) { }
+                        qrScannerInstance = new Html5Qrcode("qrReader");
                         startScannerWithFacingMode("user");
                     } else {
                         document.getElementById('qrScannerStatus').innerText = 'Camera fail: ' + (err.message || err);
@@ -2637,6 +2650,27 @@
             };
 
             startScannerWithFacingMode(currentFacingMode);
+        }
+
+        async function _handleScannedText(text) {
+            if (!text) return;
+            text = text.trim();
+
+            if (qrScannerTask === 'serial') {
+                if (await handleSerialQRScanned(text)) {
+                    // Handled
+                } else {
+                    document.getElementById('qrScannerStatus').innerText = 'Invalid File QR. Try scanning the sender screen.';
+                }
+                return;
+            }
+
+            // Connection Task
+            if (text.startsWith('QS:')) {
+                document.getElementById('qrScannerStatus').innerText = 'This is a file QR. Please use "Receive via QR".';
+                return;
+            }
+            await handleOfflineQRScanned(text);
         }
 
         function closeQRScanner() {
@@ -2659,8 +2693,6 @@
                     window.location.href = text;
                     return;
                 }
-
-                if (await handleSerialQRScanned(text)) return;
 
                 if (text.startsWith('BDS:')) {
                     // Super-minified Offer
@@ -3100,7 +3132,7 @@
         }
 
         async function compressFile(file) {
-            const stream = file.stream().pipeThrough(new CompressionStream('gzip'));
+            const stream = file.stream().pipeThrough(new CompressionStream('deflate'));
             const response = new Response(stream);
             const blob = await response.blob();
             return new Uint8Array(await blob.arrayBuffer());
@@ -3108,7 +3140,7 @@
 
         async function decompressData(data) {
             try {
-                const stream = new Blob([data]).stream().pipeThrough(new DecompressionStream('gzip'));
+                const stream = new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate'));
                 const response = new Response(stream);
                 const blob = await response.blob();
                 return new Uint8Array(await blob.arrayBuffer());
