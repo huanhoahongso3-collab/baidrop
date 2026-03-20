@@ -897,7 +897,7 @@
                 <div style="display: flex; flex-direction: column; gap: 12px;">
                     <button class="btn btn-filled" onclick="document.getElementById('avatarInput').click()"
                         data-t="upload_photo">Upload Photo</button>
-                    <button class="btn btn-text" onclick="showAvatarTemplates()" data-t="use_template">Use
+                    <button class="btn btn-text" onclick="showAvatarTemplates()" data-t="use_template" style="display: none;">Use
                         Template</button>
                     <button class="btn btn-text" onclick="resetAvatar()" data-t="reset_to_letter">Reset to
                         Letter</button>
@@ -1085,7 +1085,8 @@
                 hosting_online: 'Hosting Online...',
                 answer_generated: 'Answer Generated',
                 qr_answer_help: 'Ask the Host to scan this connection Answer.',
-                switch_camera: 'Switch Camera'
+                switch_camera: 'Switch Camera',
+                invalid_qr: 'Connection Failed. QR is for setup only, files will share over local WiFi.'
             },
             vi: {
                 hero_title: 'Gửi tệp ngay lập tức.',
@@ -1147,7 +1148,8 @@
                 answer_generated: 'Đã tạo câu trả lời',
                 qr_answer_help: 'Yêu cầu người chủ trì quét câu trả lời kết nối này.',
                 mqtt_error: 'Không thể kết nối với máy chủ MQTT. Chức năng thiết bị lân cận sẽ không hoạt động.',
-                switch_camera: 'Đổi Camera'
+                switch_camera: 'Đổi Camera',
+                invalid_qr: 'Kết nối thất bại. QR chỉ để thiết lập, tệp sẽ được chia sẻ qua WiFi cục bộ.'
             }
         };
 
@@ -2714,13 +2716,13 @@
                     const answer = await offlinePeerConnection.createAnswer();
                     await offlinePeerConnection.setLocalDescription(answer);
                     // Legacy Answer generation would be complex here, advising user to update
-                    alert('Legacy scan successful, but you should update both devices for better stability.');
+                    alert('Connection Failed: Outdated format. Please update both devices.');
                 } else {
-                    alert('Invalid Bái Drop QR Code format.');
+                    alert(t('invalid_qr'));
                 }
             } catch (err) {
                 console.error("QR Error:", err);
-                alert('Connection Failed: ' + (err.message || 'Unknown Error'));
+                alert(t('invalid_qr'));
                 closeQRScanner();
             }
         }
