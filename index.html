@@ -814,7 +814,7 @@
             <div class="modal-title" data-t="scan_qr">Scan QR</div>
             <div class="modal-content" style="display:flex; flex-direction:column; align-items:center; gap:16px;">
                 <div id="qrReader" style="width:100%; max-width:300px; border-radius:12px; overflow:hidden;"></div>
-                <div id="qrScannerStatus" style="font-size:12px; opacity:0.7;">Waiting for camera...</div>
+                <div id="qrScannerStatus" style="font-size:12px; opacity:0.7;" data-t="waiting_for_camera">Waiting for camera...</div>
             </div>
             <div class="modal-actions">
                 <button class="btn btn-text no-shade" onclick="closeQRScanner()">Cancel</button>
@@ -828,20 +828,18 @@
             <div class="modal-title" id="qrDisplayTitle">Hosting Offline</div>
             <div class="modal-content" style="display:flex; flex-direction:column; align-items:center; gap:16px;">
                 <div id="qrcodeDisplay" style="padding:16px; background:white; border-radius:8px;"></div>
-                <div id="qrDisplayStatus" style="font-size:12px; opacity:0.7; text-align:center;">Ask the receiver to
-                    tap the Scanner icon and scan this code.</div>
+                <div id="qrDisplayStatus" style="font-size:12px; opacity:0.7; text-align:center;" data-t="qr_help">Ask the receiver to tap the Scanner icon and scan this code.</div>
 
                 <!-- URL Shared Button -->
                 <button class="btn btn-text no-shade" id="copyOfflineLinkBtn" onclick="copyOfflineLink()"
                     style="margin-top:-8px;">
-                    <span class="material-icons-round" style="font-size:16px; margin-right:4px;">link</span> Copy as
-                    Link
+                    <span class="material-icons-round" style="font-size:16px; margin-right:4px;">link</span> <span data-t="copy_link">Copy as Link</span>
                 </button>
             </div>
             <div class="modal-actions">
                 <button class="btn btn-text no-shade" onclick="closeQRDisplay()">Cancel</button>
                 <button class="btn btn-filled" id="scanAnswerBtn" onclick="closeQRDisplay(); scanOfflineQR();"
-                    style="display:none;">Scan Answer</button>
+                    style="display:none;" data-t="scan_answer">Scan Answer</button>
             </div>
         </div>
     </div>
@@ -1063,7 +1061,11 @@
                 choose_avatar: 'Avatar Settings',
                 upload_photo: 'Upload Photo',
                 use_template: 'Use Template',
-                reset_to_letter: 'Reset to Letter'
+                reset_to_letter: 'Reset to Letter',
+                waiting_for_camera: 'Waiting for camera...',
+                qr_help: 'Ask the receiver to scan this code or open the link.',
+                copy_link: 'Copy as Link',
+                scan_answer: 'Scan Answer'
             },
             vi: {
                 hero_title: 'Gửi tệp ngay lập tức.',
@@ -1108,7 +1110,11 @@
                 upload_photo: 'Tải ảnh lên',
                 use_template: 'Dùng mẫu',
                 reset_to_letter: 'Dùng chữ cái mặc định',
-                select_folder_prompt: 'Chọn Thư mục thay vì Tệp?'
+                select_folder_prompt: 'Chọn Thư mục thay vì Tệp?',
+                waiting_for_camera: 'Đang chờ máy ảnh...',
+                qr_help: 'Yêu cầu người nhận quét mã này hoặc mở liên kết.',
+                copy_link: 'Sao chép liên kết',
+                scan_answer: 'Quét câu trả lời'
             }
         };
 
@@ -2795,22 +2801,12 @@
                         const conn = new OnlineDataConnection(onlineRoomId, 'receiver');
                         currentConnection = conn;
 
-                        transferOverlay.style.display = 'flex';
-                        transferStatus.innerText = 'Waiting for sender to accept...';
-                        document.getElementById('transferTitle').innerText = 'Connecting...';
-                        document.getElementById('transferActions').style.display = 'none';
+
 
                         conn.on('data', (d) => handleConnectionData(conn, d));
                         conn.on('error', () => { alert(t('error_link')); transferOverlay.style.display = 'none'; });
 
-                        // We also need to manually trigger the "Incoming" UI if we want, but the Sender is the one
-                        // who accepts. In Bái Drop default, Receiver accepts. 
-                        // But online requirement: "Sender will be prompted".
-                        // So receiver just waits for sender to accept.
-                        // We skip 'request' prompt and set states as if we accepted.
-                        hasPressedStart = true;
-                        otherHasPressedStart = true;
-                        pendingTransfer = data.requestData;
+
                     }
                 }, 500);
             } else {
