@@ -3194,7 +3194,7 @@
             try {
                 const compressed = await compressFile(file);
                 const base64 = uint8ArrayToBase64(compressed);
-                const chunkSize = 2000; 
+                const chunkSize = 400; 
                 qrSerialChunks = [];
                 const total = Math.ceil(base64.length / chunkSize);
                 const filename = encodeURIComponent(file.name);
@@ -3226,8 +3226,8 @@
             container.innerHTML = '';
             new QRCode(container, {
                 text: qrSerialChunks[qrSerialIndex],
-                width: 250,
-                height: 250,
+                width: 350,
+                height: 350,
                 correctLevel: QRCode.CorrectLevel.L
             });
             document.getElementById('qrSerialProgress').innerText = `Block ${qrSerialIndex + 1} / ${qrSerialChunks.length}`;
@@ -3285,7 +3285,7 @@
             const filename = decodeURIComponent(parts[1]);
             const total = parseInt(parts[2]);
             const index = parseInt(parts[3]);
-            const data = parts[4];
+            const data = parts.slice(4).join(':');
 
             if (!qrReceiveData.active || qrReceiveData.filename !== filename) {
                 // New file or session
