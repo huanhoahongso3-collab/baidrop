@@ -391,8 +391,8 @@
             width: 64px;
             height: 64px;
             border-radius: 18px;
-            background-color: var(--md-sys-color-primary-container);
-            color: var(--md-sys-color-primary);
+            background-color: var(--md-sys-color-primary);
+            color: var(--md-sys-color-on-primary);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -405,8 +405,8 @@
         .fab:hover {
             transform: scale(1.1) rotate(90deg);
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-            background-color: var(--md-sys-color-primary);
-            color: white;
+            background-color: var(--md-sys-color-primary-container);
+            color: var(--md-sys-color-on-primary-container);
         }
 
         .fab span {
@@ -745,7 +745,7 @@
     <main>
         <div class="hero-section">
             <h1 class="hero-title" data-t="hero_title">Send Files Instantly.</h1>
-            <p class="hero-subtitle" data-t="hero_subtitle">Secure, fast, and serverless peer-to-peer sharing.</p>
+            <p class="hero-subtitle" data-t="hero_subtitle">Secure, fast peer-to-peer sharing.</p>
         </div>
 
         <div class="device-card" id="myDevice" style="position: relative;">
@@ -769,11 +769,13 @@
                 <span class="material-icons-round" style="font-size: 18px; cursor: pointer; opacity: 0.6;"
                     onclick="clearSelection()">close</span>
             </div>
-            <button id="qrShareBtn" class="btn btn-filled" style="display:none; gap:8px; align-items:center;" onclick="hostOfflineQR()">
-                <span class="material-icons-round">qr_code_2</span> Share Offline (QR)
+            <button id="qrShareBtn" class="btn btn-filled" style="display:none; gap:8px; align-items:center;"
+                onclick="hostOfflineQR()">
+                <span class="material-icons-round">qr_code_2</span> Share Offline
             </button>
-            <button id="onlineShareBtn" class="btn btn-text" style="display:none; gap:8px; align-items:center; margin-top:-8px;" onclick="hostOnlineShare()">
-                <span class="material-icons-round">cloud_upload</span> Share Online (Link)
+            <button id="onlineShareBtn" class="btn btn-text"
+                style="display:none; gap:8px; align-items:center; margin-top:-8px;" onclick="hostOnlineShare()">
+                <span class="material-icons-round">cloud_upload</span> Share Online
             </button>
         </div>
 
@@ -781,7 +783,8 @@
             <div class="section-header">
                 <div style="display:flex; align-items:center; gap:8px;">
                     <div class="section-title" data-t="nearby_devices">Nearby Devices</div>
-                    <button class="btn btn-text no-shade" onclick="scanOfflineQR()" title="Scan Offline QR" style="padding:2px 8px; font-size:18px; color:var(--md-sys-color-primary);">
+                    <button class="btn btn-text no-shade" onclick="scanOfflineQR()" title="Scan Offline QR"
+                        style="padding:2px 8px; font-size:18px; color:var(--md-sys-color-primary);">
                         <span class="material-icons-round">qr_code_scanner</span>
                     </button>
                 </div>
@@ -825,16 +828,20 @@
             <div class="modal-title" id="qrDisplayTitle">Hosting Offline</div>
             <div class="modal-content" style="display:flex; flex-direction:column; align-items:center; gap:16px;">
                 <div id="qrcodeDisplay" style="padding:16px; background:white; border-radius:8px;"></div>
-                <div id="qrDisplayStatus" style="font-size:12px; opacity:0.7; text-align:center;">Ask the receiver to tap the Scanner icon and scan this code.</div>
-                
+                <div id="qrDisplayStatus" style="font-size:12px; opacity:0.7; text-align:center;">Ask the receiver to
+                    tap the Scanner icon and scan this code.</div>
+
                 <!-- URL Shared Button -->
-                <button class="btn btn-text no-shade" id="copyOfflineLinkBtn" onclick="copyOfflineLink()" style="margin-top:-8px;">
-                    <span class="material-icons-round" style="font-size:16px; margin-right:4px;">link</span> Copy as Link
+                <button class="btn btn-text no-shade" id="copyOfflineLinkBtn" onclick="copyOfflineLink()"
+                    style="margin-top:-8px;">
+                    <span class="material-icons-round" style="font-size:16px; margin-right:4px;">link</span> Copy as
+                    Link
                 </button>
             </div>
             <div class="modal-actions">
                 <button class="btn btn-text no-shade" onclick="closeQRDisplay()">Cancel</button>
-                <button class="btn btn-filled" id="scanAnswerBtn" onclick="closeQRDisplay(); scanOfflineQR();" style="display:none;">Scan Answer</button>
+                <button class="btn btn-filled" id="scanAnswerBtn" onclick="closeQRDisplay(); scanOfflineQR();"
+                    style="display:none;">Scan Answer</button>
             </div>
         </div>
     </div>
@@ -996,7 +1003,7 @@
                 date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
                 const expires = "expires=" + date.toUTCString();
                 document.cookie = name + "=" + encodeURIComponent(value) + ";" + expires + ";path=/";
-            } catch (e) {}
+            } catch (e) { }
         }
 
         function getCookie(name) {
@@ -1008,7 +1015,7 @@
                     while (c.charAt(0) == ' ') c = c.substring(1, c.length);
                     if (c.indexOf(nameEQ) == 0) return decodeURIComponent(c.substring(nameEQ.length, c.length));
                 }
-            } catch (e) {}
+            } catch (e) { }
             return null;
         }
 
@@ -1130,9 +1137,6 @@
         let myName = myNameValue;
         let myAvatar = getSetting('baidrop-avatar') || 'airdrop';
         let myId = getSetting('baidrop-id') || null;
-        if (!myId) {
-            myId = Math.random().toString(36).substring(2, 8); // Short hash
-        }
         let myIpHash = 'global';
         let peers = new Map();
         let currentConnection = null;
@@ -1498,7 +1502,7 @@
 
         async function pollVercel() {
             if (!myId || document.visibilityState === 'hidden') return; // Wait until PeerJS gives us an ID, and don't poll if hidden
-            
+
             try {
                 const res = await fetch(DISCOVERY_ENDPOINT, {
                     method: 'POST',
@@ -1858,7 +1862,7 @@
         let chunkAckResolver = null;
         async function beginChunkedSend() {
             transferStatus.innerText = t('sending');
-            const CHUNK_SIZE = currentConnection.isOnlineRelay ? (3 * 1024 * 1024) : (64 * 1024); 
+            const CHUNK_SIZE = currentConnection.isOnlineRelay ? (3 * 1024 * 1024) : (64 * 1024);
             const startTime = Date.now();
             const totalSize = selectedFiles.reduce((sum, f) => sum + f.size, 0);
             let totalUploadedBeforeCurrentFile = 0;
@@ -2046,9 +2050,9 @@
             let r = 245, g = 124, b = 0;
             if (currentAccent && currentAccent.startsWith('#')) {
                 const hex = currentAccent.replace('#', '');
-                r = parseInt(hex.substring(0,2), 16) || r;
-                g = parseInt(hex.substring(2,4), 16) || g;
-                b = parseInt(hex.substring(4,6), 16) || b;
+                r = parseInt(hex.substring(0, 2), 16) || r;
+                g = parseInt(hex.substring(2, 4), 16) || g;
+                b = parseInt(hex.substring(4, 6), 16) || b;
             }
 
             let start = null;
@@ -2068,11 +2072,11 @@
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
 
                 if (timeElapsed <= duration) {
-                    
+
                     // Central glowing pulse
                     const pulseIntensity = Math.abs(Math.sin((timeElapsed / 1000) * Math.PI)); // Pulses rhythmically
                     const centerRadius = 80 + (pulseIntensity * 30);
-                    
+
                     const centerGrad = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, centerRadius);
                     centerGrad.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${pulseIntensity * 0.7})`);
                     centerGrad.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
@@ -2086,21 +2090,21 @@
                         if (timeElapsed > delay) {
                             let rippleTime = timeElapsed - delay;
                             if (rippleTime < waveDuration) {
-                                let rProgress = rippleTime / waveDuration; 
-                                
+                                let rProgress = rippleTime / waveDuration;
+
                                 // Expand outwards linearly or with slight ease-out
                                 const easeOut = 1 - Math.pow(1 - rProgress, 2);
                                 const radius = 60 + (maxRadius * easeOut);
-                                
+
                                 // Fade out cleanly before it vanishes
                                 const alpha = 1 - Math.pow(rProgress, 1.5);
-                                
+
                                 ctx.beginPath();
                                 ctx.arc(centerX, centerY, Math.max(1, radius), 0, Math.PI * 2);
-                                
+
                                 // Thick inner stroke edge creating the "wave" look
                                 ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${Math.max(0, alpha * 0.5)})`;
-                                ctx.lineWidth = 120 * (1 - rProgress) + 15; 
+                                ctx.lineWidth = 120 * (1 - rProgress) + 15;
                                 ctx.stroke();
 
                                 // Subtle faint internal fill
@@ -2214,7 +2218,7 @@
                             } else {
                                 this.emit('data', parsed);
                             }
-                        } catch(err) { console.warn("Raw parse err", err); }
+                        } catch (err) { console.warn("Raw parse err", err); }
                     } else if (e.data instanceof ArrayBuffer) {
                         if (pendingMeta) {
                             this.emit('data', { ...pendingMeta, type: 'file-chunk', data: e.data });
@@ -2304,7 +2308,7 @@
                 height: 256,
                 correctLevel: QRCode.CorrectLevel.L
             });
-            
+
             document.getElementById('qrDisplayStatus').innerText = 'Ask the receiver to tap the Scanner icon and scan this code.\n\nThen, tap "Scan Answer" below to scan the code they generate.';
             document.getElementById('scanAnswerBtn').style.display = 'block';
         }
@@ -2331,7 +2335,7 @@
                 }).catch(err => {
                     // If preferred environment fails (like on PCs), fallback to user (webcam)
                     if (facingModeOpt.facingMode === "environment") {
-                        try { qrScannerInstance.clear(); } catch(e){} // Attempt safe cleanup
+                        try { qrScannerInstance.clear(); } catch (e) { } // Attempt safe cleanup
                         qrScannerInstance = new Html5Qrcode("qrReader"); // Re-instantiate to avoid corrupted internal state
                         startScanner({ facingMode: "user" });
                     } else {
@@ -2356,10 +2360,16 @@
 
         async function handleOfflineQRScanned(text) {
             try {
+                if (text.includes('?online=')) {
+                    closeQRScanner();
+                    window.location.href = text;
+                    return;
+                }
+
                 if (text.startsWith('BD_OFFER:')) {
                     // Receiver scanning Sender's Offer
                     closeQRScanner();
-                    
+
                     const compressedSDP = text.replace('BD_OFFER:', '');
                     const sdpString = await decompressString(compressedSDP);
                     const offerDesc = JSON.parse(sdpString);
@@ -2383,19 +2393,19 @@
                     await new Promise(r => setTimeout(r, 600)); // Gather local ICE
 
                     const answerData = JSON.stringify(offlinePeerConnection.localDescription);
-            const compressedAnswer = await compressString(answerData);
-            currentOfflineString = 'BD_ANSWER:' + compressedAnswer;
+                    const compressedAnswer = await compressString(answerData);
+                    currentOfflineString = 'BD_ANSWER:' + compressedAnswer;
 
-            // Show Answer QR for Sender to scan
-            document.getElementById('qrDisplayOverlay').style.display = 'flex';
-            document.getElementById('qrDisplayTitle').innerText = 'Answer Generated';
-            document.getElementById('qrcodeDisplay').innerHTML = '';
-            new QRCode(document.getElementById('qrcodeDisplay'), {
-                text: currentOfflineString,
-                width: 256,
-                height: 256,
-                correctLevel: QRCode.CorrectLevel.L
-            });
+                    // Show Answer QR for Sender to scan
+                    document.getElementById('qrDisplayOverlay').style.display = 'flex';
+                    document.getElementById('qrDisplayTitle').innerText = 'Answer Generated';
+                    document.getElementById('qrcodeDisplay').innerHTML = '';
+                    new QRCode(document.getElementById('qrcodeDisplay'), {
+                        text: currentOfflineString,
+                        width: 256,
+                        height: 256,
+                        correctLevel: QRCode.CorrectLevel.L
+                    });
                     document.getElementById('qrDisplayStatus').innerText = 'Ask the Host to scan this connection Answer.';
                     document.getElementById('scanAnswerBtn').style.display = 'none';
 
@@ -2446,7 +2456,7 @@
                 this.role = role;
                 this.open = true;
                 this.isOnlineRelay = true;
-                this.dataChannel = { bufferedAmount: 0 }; 
+                this.dataChannel = { bufferedAmount: 0 };
                 this.callbacks = { data: [], open: [], close: [], error: [] };
                 this.isClosed = false;
                 this.lastPolledStatus = 'waiting';
@@ -2465,7 +2475,7 @@
                     });
                     if (!res.ok) return;
                     const data = await res.json();
-                    
+
                     if (data.status === 'cancelled' && this.lastPolledStatus !== 'cancelled') {
                         this.emit('data', { type: 'cancel' });
                     }
@@ -2477,23 +2487,32 @@
                             // Prompt Sender
                             const msg = `\n${data.receiver.name} wants to receive your files.\nAccept?`;
                             const acc = confirm(msg);
-                            
+
                             await fetch('/api/relay', {
                                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ roomId: this.roomId, action: 'respond', accept: acc })
                             });
-                            
+
                             closeQRDisplay();
                             document.body.classList.remove('modal-open');
-                            
+
                             if (!acc) {
                                 this.close();
                                 resetTransferState();
                             } else {
-                                // Receiver waits for accepted status to show prompt, but in our logic
-                                // sending "response/accepted=true" emulates receiver answering sender's request.
-                                // In the standard flow, receiver says accepted, so sender starts sending a 'response' or starts the UI.
-                                // But sender is ALREADY in 'sending' state here. We just need to trigger the UI transition.
+                                // Initialize the Transfer UI only now!
+                                document.body.classList.add('modal-open');
+                                const to = document.getElementById('transferOverlay');
+                                to.classList.remove('modal-waiting');
+                                to.style.display = 'flex';
+                                document.getElementById('transferStatus').innerText = t('connecting');
+                                progressBar().style.width = '0%';
+                                document.getElementById('transferProgressText').innerText = '0%';
+                                document.getElementById('transferSpeed').innerText = '0 KB/s';
+                                document.getElementById('transferActions').style.display = 'none';
+                                document.getElementById('transferTitle').innerText = t('sending');
+
+                                // Emulate answering receiver to kick off transfer
                                 this.emit('data', { type: 'response', accepted: true });
                             }
                         }
@@ -2510,10 +2529,10 @@
                             // or rather, we simulate that we are receiving.
                             this.emit('data', { type: 'start' });
                         }
-                        
+
                         if (data.chunk && data.chunk.index !== this.lastReceivedChunkIndex) {
                             this.lastReceivedChunkIndex = data.chunk.index;
-                            
+
                             const buffer = base64ToArrayBuffer(data.chunk.data);
                             const chunkData = {
                                 type: 'file-chunk',
@@ -2523,9 +2542,9 @@
                                 isLastChunk: data.chunk.isLastChunk,
                                 isLastFile: data.chunk.isLastFile
                             };
-                            
+
                             this.emit('data', chunkData);
-                            
+
                             fetch('/api/relay', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
@@ -2538,7 +2557,7 @@
 
             async send(data) {
                 if (this.isClosed) return;
-                
+
                 if (data.type === 'request') {
                     await fetch('/api/relay', {
                         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -2551,7 +2570,7 @@
                     });
                     return;
                 }
-                
+
                 if (data.type === 'file-chunk') {
                     const b64 = arrayBufferToBase64(data.data);
                     this.currentChunkIndex = (this.currentChunkIndex || 0) + 1;
@@ -2569,7 +2588,7 @@
                     });
                     return;
                 }
-                
+
                 if (data.type === 'cancel') {
                     fetch('/api/relay', {
                         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -2600,16 +2619,19 @@
             document.getElementById('scanAnswerBtn').style.display = 'none';
 
             const roomId = Math.random().toString(36).substring(2, 9);
-            
+
             const customConn = new OnlineDataConnection(roomId, 'sender');
             currentConnection = customConn;
             transferRole = 'sender';
 
             customConn.on('open', () => {
-                // DON'T close QR display yet, wait for receiver to join
-                // But DO send the file metadata logic to the relay implicitly
-                startSendRequest(customConn.peer);
-                
+                const reqData = {
+                    type: 'request',
+                    files: selectedFiles.map(f => ({ name: f.name, size: f.size, type: f.type })),
+                    senderName: myName
+                };
+                customConn.send(reqData);
+
                 // Show QR code for receiver
                 currentOfflineString = window.location.origin + window.location.pathname + '?online=' + roomId;
                 document.getElementById('qrcodeDisplay').innerHTML = '';
@@ -2619,7 +2641,7 @@
                     height: 256,
                     correctLevel: QRCode.CorrectLevel.L
                 });
-                
+
                 document.getElementById('qrDisplayStatus').innerText = 'Ask the receiver to scan this code or open the link.\n\nA prompt will appear when they join.';
             });
             customConn.on('data', (data) => handleConnectionData(customConn, data));
@@ -2630,13 +2652,13 @@
         checkUrlForPeer = () => {
             const params = new URLSearchParams(window.location.search);
             const onlineRoomId = params.get('online');
-            
+
             if (onlineRoomId) {
                 const checkReady = setInterval(async () => {
                     if (myId) {
                         clearInterval(checkReady);
                         transferRole = 'receiver';
-                        
+
                         // Join the online room
                         const res = await fetch('/api/relay', {
                             method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -2645,31 +2667,31 @@
                                 receiver: { id: myId, name: myName, avatar: myAvatar }
                             })
                         });
-                        
+
                         if (!res.ok) {
                             alert('Session expired or invalid link.');
                             return;
                         }
                         const data = await res.json();
-                        
+
                         const conn = new OnlineDataConnection(onlineRoomId, 'receiver');
                         currentConnection = conn;
-                        
+
                         transferOverlay.style.display = 'flex';
                         transferStatus.innerText = 'Waiting for sender to accept...';
                         document.getElementById('transferTitle').innerText = 'Connecting...';
                         document.getElementById('transferActions').style.display = 'none';
-                        
+
                         conn.on('data', (d) => handleConnectionData(conn, d));
                         conn.on('error', () => { alert(t('error_link')); transferOverlay.style.display = 'none'; });
-                        
+
                         // We also need to manually trigger the "Incoming" UI if we want, but the Sender is the one
                         // who accepts. In Bái Drop default, Receiver accepts. 
                         // But online requirement: "Sender will be prompted".
                         // So receiver just waits for sender to accept.
                         // We skip 'request' prompt and set states as if we accepted.
                         hasPressedStart = true;
-                        otherHasPressedStart = true; 
+                        otherHasPressedStart = true;
                         pendingTransfer = data.requestData;
                     }
                 }, 500);
