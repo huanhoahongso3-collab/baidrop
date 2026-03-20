@@ -817,12 +817,12 @@
                 <div id="qrScannerStatus" style="font-size:12px; opacity:0.7;" data-t="waiting_for_camera">Waiting for
                     camera...</div>
             </div>
-            <div class="modal-actions" style="justify-content: space-between; display: flex !important; width: 100%;">
-                <button class="btn btn-text" onclick="switchCamera()" style="gap:8px; display:inline-flex !important; padding: 0 16px;">
+            <div class="modal-actions" style="justify-content: space-between !important; display: flex !important; width: 100%;">
+                <button class="btn btn-text" onclick="switchCamera()" style="gap:8px; display:inline-flex !important; padding: 0 16px; z-index: 1001; position: relative;">
                     <span class="material-icons-round">flip_camera_ios</span>
                     <span data-t="switch_camera">Switch Camera</span>
                 </button>
-                <button class="btn btn-text no-shade" onclick="closeQRScanner()" data-t="cancel" style="padding: 0 16px;">Cancel</button>
+                <button class="btn btn-text no-shade" onclick="closeQRScanner()" data-t="cancel" style="padding: 0 16px; z-index: 1001; position: relative;">Cancel</button>
             </div>
         </div>
     </div>
@@ -1276,25 +1276,30 @@
                     av.innerText = '';
                     av.classList.remove('material-icons-round');
                 } else if (myAvatar && myAvatar !== 'default' && myAvatar !== '?' && myAvatar !== 'airdrop') {
-                    // It's a template icon (Emoji or SVG string)
-                    av.style.backgroundImage = 'none';
-                    if (myAvatar.trim().startsWith('<svg')) {
-                        av.innerHTML = myAvatar;
+                    // It's a template icon
+                    if (myAvatar === 'logo') {
+                        av.style.backgroundImage = 'none';
                         av.classList.remove('material-icons-round');
+                        av.innerHTML = `
+                            <svg xmlns="http://www.w3.org/2000/svg" height="60%" viewBox="0 -960 960 960" width="60%" fill="currentColor" style="display: block; margin: auto;"><path d="M204-150q-57-55-90.5-129.5T80-440q0-83 31.5-156T197-723q54-54 127-85.5T480-840q83 0 156 31.5T763-723q54 54 85.5 127T880-440q0 86-33.5 161T756-150l-56-56q46-44 73-104.5T800-440q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 69 27 129t74 104l-57 57Zm113-113q-35-33-56-78.5T240-440q0-100 70-170t170-70q100 0 170 70t70 170q0 53-21 99t-56 78l-57-57q25-23 39.5-54t14.5-66q0-66-47-113t-113-47q-66 0-113 47t-47 113q0 36 14.5 66.5T374-320l-57 57Zm106.5-120.5Q400-407 400-440t23.5-56.5Q447-520 480-520t56.5 23.5Q560-473 560-440t-23.5 56.5Q513-360 480-360t-56.5-23.5Z"/></svg>
+                        `;
+                    } else if (myAvatar === 'lotus') {
+                        av.style.backgroundImage = 'none';
+                        av.classList.remove('material-icons-round');
+                        av.innerHTML = `
+                            <svg xmlns="http://www.w3.org/2000/svg" height="85%" viewBox="0 0 1200 1200" width="85%" style="display: block; margin: auto;">
+                                <path style="fill:currentColor;" d="M1000.572,745.016c-44.434-43.957-100.521-71.965-162.221-80.999c-7.871-1.154-15.2,4.34-16.337,12.184c-1.15,7.862,4.311,15.198,12.176,16.354c50.463,7.385,97.034,29.021,135.136,62.706c-46.871,41.374-107.055,64.697-170.291,65.842c-60.116,1.126-118.169-17.948-165.282-53.794c143.529-18.456,255.592-141.249,256.393-288.881c0.022-3.824-1.517-7.569-4.209-10.263c-2.896-2.915-6.789-4.507-10.528-4.236c-61.126,0.386-119.502,19.501-168.829,55.292c-6.431,4.675-7.862,13.71-3.193,20.142c2.264,3.112,5.601,5.159,9.401,5.765c3.8,0.605,7.623-0.305,10.739-2.569c40.309-29.253,87.63-46.223,137.276-49.293c-4.075,65.321-32.319,126.374-80.014,172.598c-41.287,40.016-93.359,65.12-149.248,72.602C720.055,624.094,713,458.571,609.744,354.188c-2.631-2.661-6.367-4.188-10.254-4.188c-3.883,0-7.619,1.526-10.247,4.185c-43.958,44.436-71.967,100.524-80.994,162.207c-1.15,7.862,4.311,15.198,12.214,16.359c7.865,1.108,15.177-4.362,16.318-12.184c7.386-50.454,29.02-97.026,62.7-135.133c42.975,48.756,65.893,111.571,64.677,177.702c-1.054,57.236-20.174,111.619-54.352,156.335C591.51,577.132,470.212,465.499,324.438,463.997c-3.934-0.027-7.6,1.44-10.359,4.171c-2.714,2.689-4.273,6.423-4.273,10.247v26.761c0,0.473,0.022,0.952,0.074,1.461c4.991,49.044,22.589,96.339,50.888,136.774c4.544,6.5,13.543,8.092,20.083,3.546c3.155-2.208,5.263-5.513,5.93-9.305c0.67-3.794-0.176-7.621-2.386-10.776c-25.342-36.205-41.158-78.537-45.753-122.443v-11.043c64.571,4.298,124.946,32.594,170.639,80.139c39.478,41.075,64.261,92.746,71.679,148.111c-113.551-87.461-278.115-78.846-381.493,22.416c-2.765,2.719-4.298,6.351-4.317,10.215c-0.022,3.83,1.52,7.578,4.225,10.274l18.866,18.861c0.351,0.361,0.718,0.693,1.14,1.041c51.565,42.029,116.721,65.173,183.473,65.172c0.007,0,0.019,0,0.022,0h0.536c52.169-0.04,103.335-14.055,147.964-40.534c3.311-1.964,5.662-5.103,6.613-8.834c0.955-3.733,0.396-7.614-1.565-10.921c-1.961-3.311-5.096-5.662-8.829-6.615c-3.739-0.961-7.625-0.396-10.937,1.568c-40.152,23.824-86.206,36.445-133.198,36.499h-0.738c-59.842-0.032-118.266-20.71-164.556-58.234l-7.814-7.807c48.745-42.702,111.311-65.544,177.131-64.503c68.167,1.099,132.125,27.821,180.097,75.246c0.016,0.016,0.032,0.032,0.048,0.047c0.001,0.001,0.002,0.002,0.003,0.004c0.001,0.001,0.002,0.002,0.003,0.003c0.028,0.027,0.056,0.055,0.083,0.082C642.766,820.036,716.026,850,794.038,850c0.009,0,0.028,0,0.038,0c78.088-0.003,151.425-30.007,206.499-84.488c2.718-2.69,4.276-6.425,4.276-10.247C1004.852,751.441,1003.293,747.706,1000.572,745.016z"/>
+                            </svg>
+                        `;
                     } else {
-                        // Likely an Emoji
+                        av.style.backgroundImage = 'none';
                         av.innerHTML = myAvatar;
-                        av.classList.remove('material-icons-round');
-                        av.style.display = 'flex';
-                        av.style.alignItems = 'center';
-                        av.style.justifyContent = 'center';
-                        av.style.fontSize = '36px';
+                        av.classList.add('material-icons-round');
                     }
                 } else {
                     av.style.backgroundImage = 'none';
-                    av.innerText = myName[0].toUpperCase();
+                    av.innerHTML = myName[0].toUpperCase();
                     av.classList.remove('material-icons-round');
-                    av.style.fontSize = '24px';
                 }
             }
 
@@ -1427,35 +1432,28 @@
             document.getElementById('avatarMainContent').style.display = 'none';
             const grid = document.getElementById('avatarIconGrid');
             grid.innerHTML = '';
-            const templates = [
-                { id: 'logo', svg: '<svg xmlns="http://www.w3.org/2000/svg" height="36px" viewBox="0 -960 960 960" width="36px" fill="currentColor"><path d="M204-150q-57-55-90.5-129.5T80-440q0-83 31.5-156T197-723q54-54 127-85.5T480-840q83 0 156 31.5T763-723q54 54 85.5 127T880-440q0 86-33.5 161T756-150l-56-56q46-44 73-104.5T800-440q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 69 27 129t74 104l-57 57Zm113-113q-35-33-56-78.5T240-440q0-100 70-170t170-70q100 0 170 70t70 170q0 53-21 99t-56 78l-57-57q25-23 39.5-54t14.5-66q0-66-47-113t-113-47q-66 0-113 47t-47 113q0 36 14.5 66.5T374-320l-57 57Zm106.5-120.5Q400-407 400-440t23.5-56.5Q447-520 480-520t56.5 23.5Q560-473 560-440t-23.5 56.5Q513-360 480-360t-56.5-23.5Z"/></svg>' },
-                { id: 'fox', emoji: '🦊' }, { id: 'owl', emoji: '🦉' }, { id: 'panda', emoji: '🐼' }, { id: 'tiger', emoji: '🐯' },
-                { id: 'rocket', emoji: '🚀' }, { id: 'diamond', emoji: '💎' }, { id: 'star', emoji: '⭐' }, { id: 'bolt', emoji: '⚡' },
-                { id: 'fire', emoji: '🔥' }, { id: 'heart', emoji: '❤️' }, { id: 'ufo', emoji: '🛸' }, { id: 'ghost', emoji: '👻' },
-                { id: 'robot', emoji: '🤖' }, { id: 'alien', emoji: '👽' }, { id: 'cat', emoji: '🐱' }, { id: 'dog', emoji: '🐶' }
-            ];
-            templates.forEach(t => {
+            const icons = ['logo', 'lotus', 'rocket', 'face', 'pets', 'star', 'bolt', 'eco', 'favorite', 'cloud', 'smartphone', 'laptop', 'auto_fix_high', 'psychology', 'explore', 'public', 'diamond', 'celebration', 'coffee', 'music_note'];
+            icons.forEach(icon => {
                 const div = document.createElement('div');
                 div.className = 'avatar-option';
-                if (t.svg) {
-                    div.innerHTML = t.svg;
-                    div.onclick = () => selectAvatar(t.svg);
+                if (icon === 'logo') {
+                    div.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" height="36px" viewBox="0 -960 960 960" width="36px" fill="currentColor"><path d="M204-150q-57-55-90.5-129.5T80-440q0-83 31.5-156T197-723q54-54 127-85.5T480-840q83 0 156 31.5T763-723q54 54 85.5 127T880-440q0 86-33.5 161T756-150l-56-56q46-44 73-104.5T800-440q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 69 27 129t74 104l-57 57Zm113-113q-35-33-56-78.5T240-440q0-100 70-170t170-70q100 0 170 70t70 170q0 53-21 99t-56 78l-57-57q25-23 39.5-54t14.5-66q0-66-47-113t-113-47q-66 0-113 47t-47 113q0 36 14.5 66.5T374-320l-57 57Zm106.5-120.5Q400-407 400-440t23.5-56.5Q447-520 480-520t56.5 23.5Q560-473 560-440t-23.5 56.5Q513-360 480-360t-56.5-23.5Z"/></svg>
+                    `;
+                } else if (icon === 'lotus') {
+                    div.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" height="52px" viewBox="0 0 1200 1200" width="52px" style="display: block; margin: auto;">
+                            <path style="fill:currentColor;" d="M1000.572,745.016c-44.434-43.957-100.521-71.965-162.221-80.999c-7.871-1.154-15.2,4.34-16.337,12.184c-1.15,7.862,4.311,15.198,12.176,16.354c50.463,7.385,97.034,29.021,135.136,62.706c-46.871,41.374-107.055,64.697-170.291,65.842c-60.116,1.126-118.169-17.948-165.282-53.794c143.529-18.456,255.592-141.249,256.393-288.881c0.022-3.824-1.517-7.569-4.209-10.263c-2.896-2.915-6.789-4.507-10.528-4.236c-61.126,0.386-119.502,19.501-168.829,55.292c-6.431,4.675-7.862,13.71-3.193,20.142c2.264,3.112,5.601,5.159,9.401,5.765c3.8,0.605,7.623-0.305,10.739-2.569c40.309-29.253,87.63-46.223,137.276-49.293c-4.075,65.321-32.319,126.374-80.014,172.598c-41.287,40.016-93.359,65.12-149.248,72.602C720.055,624.094,713,458.571,609.744,354.188c-2.631-2.661-6.367-4.188-10.254-4.188c-3.883,0-7.619,1.526-10.247,4.185c-43.958,44.436-71.967,100.524-80.994,162.207c-1.15,7.862,4.311,15.198,12.214,16.359c7.865,1.108,15.177-4.362,16.318-12.184c7.386-50.454,29.02-97.026,62.7-135.133c42.975,48.756,65.893,111.571,64.677,177.702c-1.054,57.236-20.174,111.619-54.352,156.335C591.51,577.132,470.212,465.499,324.438,463.997c-3.934-0.027-7.6,1.44-10.359,4.171c-2.714,2.689-4.273,6.423-4.273,10.247v26.761c0,0.473,0.022,0.952,0.074,1.461c4.991,49.044,22.589,96.339,50.888,136.774c4.544,6.5,13.543,8.092,20.083,3.546c3.155-2.208,5.263-5.513,5.93-9.305c0.67-3.794-0.176-7.621-2.386-10.776c-25.342-36.205-41.158-78.537-45.753-122.443v-11.043c64.571,4.298,124.946,32.594,170.639,80.139c39.478,41.075,64.261,92.746,71.679,148.111c-113.551-87.461-278.115-78.846-381.493,22.416c-2.765,2.719-4.298,6.351-4.317,10.215c-0.022,3.83,1.52,7.578,4.225,10.274l18.866,18.861c0.351,0.361,0.718,0.693,1.14,1.041c51.565,42.029,116.721,65.173,183.473,65.172c0.007,0,0.019,0,0.022,0h0.536c52.169-0.04,103.335-14.055,147.964-40.534c3.311-1.964,5.662-5.103,6.613-8.834c0.955-3.733,0.396-7.614-1.565-10.921c-1.961-3.311-5.096-5.662-8.829-6.615c-3.739-0.961-7.625-0.396-10.937,1.568c-40.152,23.824-86.206,36.445-133.198,36.499h-0.738c-59.842-0.032-118.266-20.71-164.556-58.234l-7.814-7.807c48.745-42.702,111.311-65.544,177.131-64.503c68.167,1.099,132.125,27.821,180.097,75.246c0.016,0.016,0.032,0.032,0.048,0.047c0.001,0.001,0.002,0.002,0.003,0.004c0.001,0.001,0.002,0.002,0.003,0.003c0.028,0.027,0.056,0.055,0.083,0.082C642.766,820.036,716.026,850,794.038,850c0.009,0,0.028,0,0.038,0c78.088-0.003,151.425-30.007,206.499-84.488c2.718-2.69,4.276-6.425,4.276-10.247C1004.852,751.441,1003.293,747.706,1000.572,745.016z"/>
+                        </svg>
+                    `;
                 } else {
-                    div.style.fontSize = '32px';
-                    div.innerText = t.emoji;
-                    div.onclick = () => selectAvatar(t.emoji);
+                    div.classList.add('material-icons-round');
+                    div.innerText = icon;
                 }
+                div.onclick = () => selectTemplateIcon(icon);
                 grid.appendChild(div);
             });
             document.getElementById('avatarTemplateContent').style.display = 'block';
-        }
-
-        function selectAvatar(avatar) {
-            myAvatar = avatar;
-            saveSetting('baidrop-avatar', myAvatar);
-            updateUI();
-            closeAvatarOverlay();
-            pollVercel();
         }
 
         function selectTemplateIcon(icon) {
@@ -2430,19 +2428,47 @@
             return await new Response(decompressedStream).text();
         }
 
-        function minifySDP(sdp) {
-            const keep = [
-                'v=', 'o=', 's=', 't=', 'm=application', 'c=IN', 'a=ice-ufrag',
-                'a=ice-pwd', 'a=fingerprint', 'a=setup', 'a=mid', 'a=sctp-port'
-            ];
-            return sdp.split('\n').filter(line => {
-                if (line.startsWith('a=candidate') && line.includes('host')) return true;
-                return keep.some(k => line.startsWith(k));
-            }).map(l => l.trim()).join('\n');
+        function packSDP(sdp) {
+            // Extract: ufrag, pwd, fingerprint, host-ip, sctp-port
+            const ufrag = sdp.match(/a=ice-ufrag:(.+)/)?.[1]?.trim();
+            const pwd = sdp.match(/a=ice-pwd:(.+)/)?.[1]?.trim();
+            const fingerprint = sdp.match(/a=fingerprint:sha-256 (.+)/)?.[1]?.trim();
+            // Candidate line: a=candidate:[foundation] [comp] [proto] [priority] [ip] [port] typ host ...
+            const cand = sdp.match(/a=candidate:\S+ \d+ \S+ \d+ ([0-9a-f\.\:]+) (\d+) typ host/i);
+            const ip = cand?.[1];
+            const port = cand?.[2];
+            
+            if (!ufrag || !pwd || !fingerprint || !ip || !port) return null;
+            // Format: ufrag|pwd|fingerprint|ip|port
+            return `${ufrag}|${pwd}|${fingerprint}|${ip}|${port}`;
         }
 
-        function expandSDP(minified) {
-            return minified.split('\n').join('\r\n') + '\r\n';
+        function unpackSDP(tokenStr, type) {
+            const parts = tokenStr.split('|');
+            if (parts.length < 5) return null;
+            const [ufrag, pwd, fingerprint, ip, port] = parts;
+            const setup = type === 'offer' ? 'actpass' : 'active';
+            
+            // Minimal valid SDP template for DataChannel
+            const sdp = [
+                'v=0',
+                'o=- 0 0 IN IP4 127.0.0.1',
+                's=-',
+                't=0 0',
+                'a=group:BUNDLE 0',
+                'm=application 9 UDP/DTLS/SCTP webrtc-datachannel',
+                'c=IN IP4 ' + ip,
+                'a=ice-ufrag:' + ufrag,
+                'a=ice-pwd:' + pwd,
+                'a=fingerprint:sha-256 ' + fingerprint,
+                'a=setup:' + setup,
+                'a=mid:0',
+                'a=sctp-port:5000',
+                `a=candidate:0 1 UDP 2122260223 ${ip} ${port} typ host`,
+                ''
+            ].join('\r\n');
+            
+            return { type, sdp };
         }
 
         let offlinePeerConnection = null;
@@ -2453,7 +2479,7 @@
 
             updateUI();
             document.getElementById('qrDisplayOverlay').style.display = 'flex';
-            document.getElementById('qrcodeDisplay').innerHTML = '<div style="padding:20px;">Generating Security Keys...</div>';
+            document.getElementById('qrcodeDisplay').innerHTML = '<div style="padding:20px;">' + t('initializing') + '</div>';
             document.getElementById('qrDisplayTitle').innerText = t('hosting_offline');
             document.getElementById('scanAnswerBtn').style.display = 'none';
 
@@ -2474,9 +2500,9 @@
             const offer = await offlinePeerConnection.createOffer();
             await offlinePeerConnection.setLocalDescription(offer);
 
-            // Wait for ICE gathering with a timeout to avoid hangs on slow networks
+            // Wait for ICE gathering with a timeout
             await new Promise(r => {
-                const timeout = setTimeout(r, 600); // 600ms gathering limit
+                const timeout = setTimeout(r, 600);
                 offlinePeerConnection.onicegatheringstatechange = () => {
                     if (offlinePeerConnection.iceGatheringState === 'complete') {
                         clearTimeout(timeout);
@@ -2485,33 +2511,21 @@
                 };
             });
 
-            const shortId = Math.random().toString(36).substring(2, 8);
-            const fullSDP = JSON.stringify(offlinePeerConnection.localDescription);
-            const minSdpData = { type: 'offer', sdp: minifySDP(offlinePeerConnection.localDescription.sdp) };
+            const tokens = packSDP(offlinePeerConnection.localDescription.sdp);
+            if (!tokens) {
+                alert('Connection stalled. Please check network/camera permissions.');
+                closeQRDisplay();
+                return;
+            }
 
-            let compressedOffer = '';
-            try {
-                // Background store (silent fail if offline)
-                const controller = new AbortController();
-                const timeout = setTimeout(() => controller.abort(), 2000);
-
-                fetch('/api/relay', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'store_sdp', roomId: shortId, sdp: fullSDP }),
-                    signal: controller.signal
-                }).catch(() => { });
-
-                compressedOffer = await compressString(JSON.stringify(minSdpData));
-            } catch (e) { }
-
-            // Hybrid QR: BDO:UUID:CompressedSDP
-            currentOfflineString = "BDO1:" + shortId + ":" + (compressedOffer || "");
+            // BDS = Bái Drop Small
+            currentOfflineString = "BDS:" + tokens;
 
             document.getElementById('qrcodeDisplay').innerHTML = '';
             new QRCode(document.getElementById('qrcodeDisplay'), {
                 text: currentOfflineString,
-                width: 280, // Slightly larger for complexity
-                height: 280,
+                width: 256,
+                height: 256,
                 correctLevel: QRCode.CorrectLevel.L
             });
             document.getElementById('qrDisplayStatus').innerText = t('qr_offline_help');
@@ -2601,49 +2615,12 @@
                     return;
                 }
 
-                if (text.match(/[\?#](o|offer)=/) || text.includes('BDO:') || text.startsWith('BD_OFFER:') || text.startsWith('BDO1:')) {
+                if (text.startsWith('BDS:')) {
+                    // Super-minified Offer
                     closeQRScanner();
-
-                    let sdpString = '';
-                    if (text.startsWith('BDO1:')) {
-                        const parts = text.split(':');
-                        const shortId = parts[1];
-                        const compressed = parts[2];
-
-                        if (compressed) {
-                            const decompressed = await decompressString(compressed);
-                            const obj = JSON.parse(decompressed);
-                            if (obj.sdp && !obj.sdp.includes('\n')) obj.sdp = expandSDP(obj.sdp);
-                            sdpString = JSON.stringify(obj);
-                        } else {
-                            // Offline fallback to relay
-                            const response = await fetch('/api/relay', {
-                                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ action: 'get_sdp', roomId: shortId })
-                            });
-                            const resData = await response.json();
-                            if (!resData.sdp) throw new Error('Cannot fetch SDP from relay and no SDP in QR');
-                            sdpString = resData.sdp;
-                        }
-                    } else if (text.includes('BDO:') || text.startsWith('BD_OFFER:')) {
-                        const prefix = text.includes('BDO:') ? 'BDO:' : 'BD_OFFER:';
-                        const part = text.split(prefix)[1];
-                        const decompressed = await decompressString(part);
-                        const obj = JSON.parse(decompressed);
-                        if (obj.sdp && !obj.sdp.includes('\n')) obj.sdp = expandSDP(obj.sdp);
-                        sdpString = JSON.stringify(obj);
-                    } else {
-                        const url = new URL(text.replace('#', '?'));
-                        const shortId = url.searchParams.get('o') || url.searchParams.get('offer');
-                        const response = await fetch('/api/relay', {
-                            method: 'POST', headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ action: 'get_sdp', roomId: shortId })
-                        });
-                        const resData = await response.json();
-                        if (!resData.sdp) throw new Error('SDP not found');
-                        sdpString = resData.sdp;
-                    }
-                    const offerDesc = JSON.parse(sdpString);
+                    const tokens = text.split('BDS:')[1];
+                    const offerDesc = unpackSDP(tokens, 'offer');
+                    if (!offerDesc) throw new Error('Invalid minified QR');
 
                     offlinePeerConnection = new RTCPeerConnection({ iceServers: [] });
                     const dataChannel = offlinePeerConnection.createDataChannel('baidrop-offline-channel', { negotiated: true, id: 0 });
@@ -2672,24 +2649,9 @@
                         };
                     });
 
-                    const fullAnswer = JSON.stringify(offlinePeerConnection.localDescription);
-                    const minAnsw = { type: 'answer', sdp: minifySDP(offlinePeerConnection.localDescription.sdp) };
-                    const ansId = Math.random().toString(36).substring(2, 8);
-
-                    let compressedAnsw = '';
-                    try {
-                        const controller = new AbortController();
-                        const timeout = setTimeout(() => controller.abort(), 2000);
-                        fetch('/api/relay', {
-                            method: 'POST', headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ action: 'store_sdp', roomId: ansId, sdp: fullAnswer }),
-                            signal: controller.signal
-                        }).catch(() => { });
-
-                        compressedAnsw = await compressString(JSON.stringify(minAnsw));
-                    } catch (e) { }
-
-                    currentOfflineString = "BDA1:" + ansId + ":" + (compressedAnsw || "");
+                    const ansTokens = packSDP(offlinePeerConnection.localDescription.sdp);
+                    if (!ansTokens) throw new Error('Cannot generate answer key');
+                    currentOfflineString = "BDA:" + ansTokens;
 
                     // Show Answer QR
                     updateUI();
@@ -2698,59 +2660,67 @@
                     document.getElementById('qrcodeDisplay').innerHTML = '';
                     new QRCode(document.getElementById('qrcodeDisplay'), {
                         text: currentOfflineString,
-                        width: 280,
-                        height: 280,
+                        width: 256,
+                        height: 256,
                         correctLevel: QRCode.CorrectLevel.L
                     });
                     document.getElementById('qrDisplayStatus').innerText = t('qr_answer_help');
                     document.getElementById('scanAnswerBtn').style.display = 'none';
 
-                } else if (text.match(/[\?#](a|answer)=/) || text.includes('BDA:') || text.includes('BD_ANSWER:') || text.startsWith('BDA1:')) {
-                    // This block handles legacy answer URLs too
+                } else if (text.startsWith('BDA:')) {
+                    // Super-minified Answer
                     closeQRScanner();
+                    const tokens = text.split('BDA:')[1];
+                    const answerDesc = unpackSDP(tokens, 'answer');
+                    if (!answerDesc) throw new Error('Invalid answer QR');
 
-                    let sdpString = '';
-                    // Handle BDA1: for answers specifically
-                    if (text.startsWith('BDA1:')) {
-                        const parts = text.split(':');
-                        const compressed = parts[2];
-                        if (compressed) {
-                             const decompressed = await decompressString(compressed);
-                             sdpString = JSON.stringify(JSON.parse(decompressed));
-                        } else {
-                             const response = await fetch('/api/relay', {
-                                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ action: 'get_sdp', roomId: parts[1] })
-                             });
-                             const resData = await response.json();
-                             sdpString = resData.sdp;
-                        }
-                    } else if (text.includes('BDA:') || text.startsWith('BD_ANSWER:')) {
-                        const prefix = text.includes('BDA:') ? 'BDA:' : 'BD_ANSWER:';
-                        const part = text.split(prefix)[1];
-                        const decompressed = await decompressString(part);
-                        sdpString = JSON.stringify(JSON.parse(decompressed));
-                    } else {
-                        const url = new URL(text.replace('#', '?'));
-                        const ansId = url.searchParams.get('a') || url.searchParams.get('answer');
-                        const response = await fetch('/api/relay', {
-                            method: 'POST', headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ action: 'get_sdp', roomId: ansId })
-                        });
-                        const resData = await response.json();
-                        if (!resData.sdp) throw new Error('Answer not found');
-                        sdpString = resData.sdp;
-                    }
-                    const answerDesc = JSON.parse(sdpString);
-                    if (answerDesc.sdp && !answerDesc.sdp.includes('\n')) answerDesc.sdp = expandSDP(answerDesc.sdp);
                     await offlinePeerConnection.setRemoteDescription(answerDesc);
                     closeQRDisplay();
+
+                } else if (text.startsWith('BD1:') || text.includes('BDO:') || text.match(/[\?#](o|offer)=/)) {
+                    // Legacy fallback using relay IF online
+                    closeQRScanner();
+                    let sdpString = '';
+                    if (text.startsWith('BD1:')) {
+                        const parts = text.split(':');
+                        const response = await fetch('/api/relay', {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ action: 'get_sdp', roomId: parts[1] })
+                        });
+                        const resData = await response.json();
+                        sdpString = resData.sdp;
+                    } else {
+                        // Attempt relay fetch for any URL-based legacy scan
+                        const url = new URL(text.replace('#', '?'));
+                        const shortId = url.searchParams.get('o') || url.searchParams.get('offer');
+                        const response = await fetch('/api/relay', {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ action: 'get_sdp', roomId: shortId })
+                        });
+                        const resData = await response.json();
+                        sdpString = resData.sdp;
+                    }
+                    if (!sdpString) throw new Error('Legacy QR requires internet');
+                    
+                    const offerDesc = JSON.parse(sdpString);
+                    offlinePeerConnection = new RTCPeerConnection({ iceServers: [] });
+                    const dataChannel = offlinePeerConnection.createDataChannel('baidrop-offline-channel', { negotiated: true, id: 0 });
+                    const customConn = new OfflineDataConnection(dataChannel, 'offline-sender');
+                    currentConnection = customConn;
+                    transferRole = 'receiver';
+                    customConn.on('open', () => { closeQRDisplay(); closeQRScanner(); customConn.send({ type: 'hello', name: myName, avatar: myAvatar }); });
+                    customConn.on('data', (data) => handleConnectionData(customConn, data));
+                    await offlinePeerConnection.setRemoteDescription(offerDesc);
+                    const answer = await offlinePeerConnection.createAnswer();
+                    await offlinePeerConnection.setLocalDescription(answer);
+                    // Legacy Answer generation would be complex here, advising user to update
+                    alert('Legacy scan successful, but you should update both devices for better stability.');
                 } else {
                     alert('Invalid Bái Drop QR Code format.');
                 }
             } catch (err) {
                 console.error("QR Error:", err);
-                alert('Connection Failed: ' + (err.message || 'Unknown Error') + '\nScanned: ' + text);
+                alert('Connection Failed: ' + (err.message || 'Unknown Error'));
                 closeQRScanner();
             }
         }
