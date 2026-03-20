@@ -72,10 +72,9 @@ export default function handler(req, res) {
         }
 
         if (action === 'poll_receiver') {
-            // Only send the chunk data down if it hasn't been ack'd
-            // To save bandwidth, if receiver already ack'd it, don't send it again
             return res.status(200).json({ 
                 status: t.status, 
+                request: t.pendingRequest,
                 chunk: (t.currentChunk && !t.currentChunk.ack) ? t.currentChunk : null 
             });
         }

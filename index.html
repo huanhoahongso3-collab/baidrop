@@ -1780,7 +1780,7 @@
                             avatarHtml = `<div class="peer-avatar material-icons-round" style="width:32px; height:32px; font-size:18px;">${data.avatar}</div>`;
                         }
                     }
-                    document.getElementById('transferStatus').innerHTML = `<div style="display:flex; align-items:center; justify-content:center; gap:8px;">${avatarHtml} <span>${t('waiting_for')} ${data.name}...</span></div>`;
+                    document.getElementById('transferStatus').innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;">${avatarHtml} <span>${t('waiting_for')} ${data.name}...</span></div>`;
                 }
             } else if (data.type === 'request') {
                 hasPressedStart = false;
@@ -2599,7 +2599,7 @@
                             document.getElementById('transferTitle').innerText = t('connecting');
                             document.getElementById('transferActions').style.display = 'none';
                             progressBar().style.width = '0%';
-                            document.getElementById('transferStatus').innerHTML = `<div style="display:flex; align-items:center; justify-content:center; gap:8px;">${avatarHtml} <span>${t('waiting_for')} ${data.receiver.name}...</span></div>`;
+                            document.getElementById('transferStatus').innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;">${avatarHtml} <span>${t('waiting_for')} ${data.receiver.name}...</span></div>`;
                         }
                         
                         if (data.status === 'accepted' && !this.acceptedSeen) {
@@ -2620,10 +2620,14 @@
                         }
                     } else {
                         // Receiver
+                        if (data.request && !this.requestSeen) {
+                            this.requestSeen = true;
+                            this.emit('data', data.request);
+                        }
+
                         if (data.status === 'accepted' && !this.acceptedSeen) {
                             this.acceptedSeen = true;
-                            // Trigger the 'response' logic for receiver to accept the initial prompt automatically,
-                            // or rather, we simulate that we are receiving.
+                            document.getElementById('transferOverlay').classList.remove('modal-waiting');
                             this.emit('data', { type: 'start' });
                         }
 
