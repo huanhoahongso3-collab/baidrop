@@ -55,8 +55,8 @@ self.addEventListener('fetch', (event) => {
                 
                 if (isSuccessful) {
                     const accept = event.request.headers.get('accept') || '';
-                    if (accept.includes('text/html') || event.request.url.includes('index.html')) {
-                        cache.match(event.request).then(cachedRes => {
+                    if (accept.includes('text/html') || event.request.url.includes('index.html') || url.pathname === '/') {
+                        cache.match(event.request, { ignoreSearch: true }).then(cachedRes => {
                             if (cachedRes) {
                                 Promise.all([cachedRes.clone().text(), networkResponse.clone().text()]).then(([oldText, newText]) => {
                                     if (oldText !== newText && cacheWon) {
@@ -78,7 +78,7 @@ self.addEventListener('fetch', (event) => {
                 throw err;
             });
 
-            return cache.match(event.request).then((cachedResponse) => {
+            return cache.match(event.request, { ignoreSearch: true }).then((cachedResponse) => {
                 if (!cachedResponse) {
                     return fetchPromise;
                 }
