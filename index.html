@@ -1676,7 +1676,7 @@
 
                     chip.style.display = 'flex';
                     document.getElementById('qrShareBtn').style.display = 'flex';
-                    document.getElementById('onlineShareBtn').style.display = 'flex';
+                    // document.getElementById('onlineShareBtn').style.display = 'flex';
                 }
             };
 
@@ -2422,6 +2422,28 @@
             return await new Response(decompressedStream).text();
         }
 
+        function minifySDP(sdp) {
+            return sdp.split(/\r?\n/)
+                .map(line => line.trim())
+                .filter(line => {
+                    if (line.startsWith('a=candidate')) return line.includes('typ host');
+                    if (line.startsWith('a=extmap')) return false;
+                    if (line.startsWith('a=msid')) return false;
+                    if (line.startsWith('a=ssrc')) return false;
+                    if (line.startsWith('a=rtcp-fb')) return false;
+                    if (line.startsWith('a=fmtp')) return false;
+                    if (line.startsWith('a=rtpmap')) return false;
+                    if (line.startsWith('a=rtcp-mux')) return false;
+                    // Keep essential lines
+                    return line.length > 0;
+                })
+                .join('\n');
+        }
+
+        function expandSDP(minified) {
+            return minified.split('\n').join('\r\n') + '\r\n';
+        }
+
         let offlinePeerConnection = null;
         let qrScannerInstance = null;
 
@@ -2451,24 +2473,32 @@
             const offer = await offlinePeerConnection.createOffer();
             await offlinePeerConnection.setLocalDescription(offer);
 
+            // Wait a bit for ICE gathering (local only, usually fast)
             await new Promise(r => setTimeout(r, 600));
 
-            const offerData = JSON.stringify(offlinePeerConnection.localDescription);
+            const currentOffer = offlinePeerConnection.localDescription;
+            const minifiedOffer = { type: currentOffer.type, sdp: minifySDP(currentOffer.sdp) };
+            const offerData = JSON.stringify(minifiedOffer);
+
             let offerString = '';
             try {
                 const compressedOffer = await compressString(offerData);
-                offerString = 'BD_OFFER:' + compressedOffer;
+                offerString = 'BDO:' + compressedOffer;
             } catch (err) { console.warn('Compression failed:', err); }
 
             const shortId = Math.random().toString(36).substring(2, 8);
             try {
+                // Also store full version in relay as fallback
+                const fullOfferData = JSON.stringify(offlinePeerConnection.localDescription);
                 await fetch('/api/relay', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'store_sdp', roomId: shortId, sdp: offerData })
+                    body: JSON.stringify({ action: 'store_sdp', roomId: shortId, sdp: fullOfferData })
                 });
             } catch (e) { console.warn('Relay failed (expected if offline):', e); }
 
-            currentOfflineString = (offerString && offerString.length < 1500) ? offerString : (window.location.origin + window.location.pathname + '?offer=' + shortId);
+            currentOfflineString = (offerString && offerString.length < 1500) ?
+                (window.location.origin + window.location.pathname + '#o=' + offerString) :
+                (window.location.origin + window.location.pathname + '?offer=' + shortId);
 
             document.getElementById('qrcodeDisplay').innerHTML = '';
             new QRCode(document.getElementById('qrcodeDisplay'), {
@@ -2477,7 +2507,6 @@
                 height: 256,
                 correctLevel: QRCode.CorrectLevel.L
             });
-
             document.getElementById('qrDisplayStatus').innerText = t('qr_offline_help');
             document.getElementById('scanAnswerBtn').style.display = 'block';
         }
@@ -2536,15 +2565,22 @@
                     return;
                 }
 
-                if (text.includes('?offer=') || text.startsWith('BD_OFFER:')) {
+                if (text.includes('?offer=') || text.includes('#o=BDO:') || text.startsWith('BDO:') || text.startsWith('BD_OFFER:')) {
                     closeQRScanner();
 
                     let sdpString = '';
-                    if (text.startsWith('BD_OFFER:')) {
-                        const compressedSDP = text.replace('BD_OFFER:', '');
-                        sdpString = await decompressString(compressedSDP);
+                    if (text.includes('BDO:') || text.startsWith('BD_OFFER:')) {
+                        const prefix = text.includes('BDO:') ? 'BDO:' : 'BD_OFFER:';
+                        const part = text.split(prefix)[1];
+                        const decompressed = await decompressString(part);
+                        const obj = JSON.parse(decompressed);
+                        // If it doesn't look like a full SDP, expand it
+                        if (obj.sdp && !obj.sdp.includes('\n')) {
+                            obj.sdp = expandSDP(obj.sdp);
+                        }
+                        sdpString = JSON.stringify(obj);
                     } else {
-                        const url = new URL(text);
+                        const url = new URL(text.replace('#o=', '?offer=')); // Normalize hash for URL parsing if needed
                         const shortId = url.searchParams.get('offer');
                         const response = await fetch('/api/relay', {
                             method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -2575,22 +2611,28 @@
 
                     await new Promise(r => setTimeout(r, 600)); // Gather local ICE
 
-                    const answerData = JSON.stringify(offlinePeerConnection.localDescription);
+                    const currentAnswer = offlinePeerConnection.localDescription;
+                    const minifiedAnswer = { type: currentAnswer.type, sdp: minifySDP(currentAnswer.sdp) };
+                    const answerData = JSON.stringify(minifiedAnswer);
                     let answerString = '';
                     try {
                         const compressedAnswer = await compressString(answerData);
-                        answerString = 'BD_ANSWER:' + compressedAnswer;
+                        answerString = 'BDA:' + compressedAnswer;
                     } catch (err) { }
 
                     const ansId = Math.random().toString(36).substring(2, 8);
                     try {
+                        // Store full version in relay as fallback
+                        const fullAnswerData = JSON.stringify(offlinePeerConnection.localDescription);
                         await fetch('/api/relay', {
                             method: 'POST', headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ action: 'store_sdp', roomId: ansId, sdp: answerData })
+                            body: JSON.stringify({ action: 'store_sdp', roomId: ansId, sdp: fullAnswerData })
                         });
                     } catch (e) { }
 
-                    currentOfflineString = (answerString && answerString.length < 1500) ? answerString : (window.location.origin + window.location.pathname + '?answer=' + ansId);
+                    currentOfflineString = (answerString && answerString.length < 1500) ?
+                        (window.location.origin + window.location.pathname + '#a=' + answerString) :
+                        (window.location.origin + window.location.pathname + '?answer=' + ansId);
 
                     // Show Answer QR for Sender to scan
                     updateUI();
@@ -2606,16 +2648,22 @@
                     document.getElementById('qrDisplayStatus').innerText = t('qr_answer_help');
                     document.getElementById('scanAnswerBtn').style.display = 'none';
 
-                } else if (text.includes('?answer=') || text.startsWith('BD_ANSWER:')) {
+                } else if (text.includes('?answer=') || text.includes('#a=BDA:') || text.startsWith('BDA:') || text.startsWith('BD_ANSWER:')) {
                     // Sender scanning Receiver's Answer
                     closeQRScanner();
 
                     let sdpString = '';
-                    if (text.startsWith('BD_ANSWER:')) {
-                        const compressedSDP = text.replace('BD_ANSWER:', '');
-                        sdpString = await decompressString(compressedSDP);
+                    if (text.includes('BDA:') || text.startsWith('BD_ANSWER:')) {
+                        const prefix = text.includes('BDA:') ? 'BDA:' : 'BD_ANSWER:';
+                        const part = text.split(prefix)[1];
+                        const decompressed = await decompressString(part);
+                        const obj = JSON.parse(decompressed);
+                        if (obj.sdp && !obj.sdp.includes('\n')) {
+                            obj.sdp = expandSDP(obj.sdp);
+                        }
+                        sdpString = JSON.stringify(obj);
                     } else {
-                        const url = new URL(text);
+                        const url = new URL(text.replace('#a=', '?answer='));
                         const ansId = url.searchParams.get('answer');
                         const response = await fetch('/api/relay', {
                             method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -2625,11 +2673,8 @@
                         if (!resData.sdp) { alert('Answer expired.'); return; }
                         sdpString = resData.sdp;
                     }
-
                     const answerDesc = JSON.parse(sdpString);
-
                     await offlinePeerConnection.setRemoteDescription(answerDesc);
-                    document.getElementById('qrDisplayOverlay').style.display = 'none';
                     // The connection will snap open and trigger `customConn.on('open')`
                 } else {
                     alert('Invalid Bái Drop QR Code.');
