@@ -1999,7 +1999,7 @@
         async function beginChunkedSend() {
             try {
                 transferStatus.innerText = t('sending');
-                const CHUNK_SIZE = currentConnection.isOnlineRelay ? (512 * 1024) : (256 * 1024);
+                const CHUNK_SIZE = currentConnection.isOnlineRelay ? (512 * 1024) : (64 * 1024);
                 const startTime = Date.now();
                 const totalSize = selectedFiles.reduce((sum, f) => sum + f.size, 0);
                 let totalUploadedBeforeCurrentFile = 0;
