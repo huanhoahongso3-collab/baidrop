@@ -9,8 +9,7 @@
         href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&family=Google+Sans:wght@400;500;700&display=swap"
         rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
-    <link rel="icon" type="image/svg+xml"
-        href='data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="%23f57c00"%3E%3Cpath d="M204-150q-57-55-90.5-129.5T80-440q0-83 31.5-156T197-723q54-54 127-85.5T480-840q83 0 156 31.5T763-723q54 54 85.5 127T880-440q0 86-33.5 161T756-150l-56-56q46-44 73-104.5T800-440q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 69 27 129t74 104l-57 57Zm113-113q-35-33-56-78.5T240-440q0-100 70-170t170-70q100 0 170 70t70 170q0 53-21 99t-56 78l-57-57q25-23 39.5-54t14.5-66q0-66-47-113t-113-47q-66 0-113 47t-47 113q0 36 14.5 66.5T374-320l-57 57Zm106.5-120.5Q400-407 400-440t23.5-56.5Q447-520 480-520t56.5 23.5Q560-473 560-440t-23.5 56.5Q513-360 480-360t-56.5-23.5Z"/%3E%3C/svg%3E'>
+    <link rel="icon" type="image/svg+xml" id="favicon" href="">
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -65,7 +64,7 @@
             color: #ffffff !important;
         }
 
-        [data-theme="dark"] .device-name, 
+        [data-theme="dark"] .device-name,
         [data-theme="dark"] .device-id {
             color: #ffffff !important;
             opacity: 1 !important;
@@ -98,7 +97,7 @@
                 color: #ffffff !important;
             }
 
-            :root:not([data-theme="light"]) .device-name, 
+            :root:not([data-theme="light"]) .device-name,
             :root:not([data-theme="light"]) .device-id {
                 color: #ffffff !important;
                 opacity: 1 !important;
@@ -173,6 +172,23 @@
             width: 42px;
             height: 42px;
             fill: currentColor;
+        }
+
+        .beta-label {
+            font-size: 10px;
+            background: var(--md-sys-color-primary-container);
+            color: var(--md-sys-color-on-primary-container);
+            padding: 1px 5px;
+            border-radius: 4px;
+            margin-left: 7px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            display: inline-flex;
+            align-items: center;
+            height: 16px;
+            position: relative;
+            top: -10px;
         }
 
         main {
@@ -557,6 +573,20 @@
 
             .logo {
                 font-size: 20px;
+                gap: 8px;
+            }
+
+            .logo svg {
+                width: 30px;
+                height: 30px;
+            }
+
+            .beta-label {
+                font-size: 9px;
+                height: 14px;
+                padding: 1px 4px;
+                margin-left: 4px;
+                top: -6px;
             }
 
             main {
@@ -758,7 +788,7 @@
                 <path
                     d="M204-150q-57-55-90.5-129.5T80-440q0-83 31.5-156T197-723q54-54 127-85.5T480-840q83 0 156 31.5T763-723q54 54 85.5 127T880-440q0 86-33.5 161T756-150l-56-56q46-44 73-104.5T800-440q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 69 27 129t74 104l-57 57Zm113-113q-35-33-56-78.5T240-440q0-100 70-170t170-70q100 0 170 70t70 170q0 53-21 99t-56 78l-57-57q25-23 39.5-54t14.5-66q0-66-47-113t-113-47q-66 0-113 47t-47 113q0 36 14.5 66.5T374-320l-57 57Zm106.5-120.5Q400-407 400-440t23.5-56.5Q447-520 480-520t56.5 23.5Q560-473 560-440t-23.5 56.5Q513-360 480-360t-56.5-23.5Z" />
             </svg>
-            Bái Drop
+            <span>Bái Drop<span class="beta-label">Beta</span></span>
         </div>
         <div class="actions">
             <button class="btn btn-text no-shade" onclick="toggleTheme()" id="themeBtn" title="Toggle Theme">
@@ -805,7 +835,7 @@
             </div>
             <button id="qrShareBtn" class="btn btn-filled" style="display:none; gap:8px; align-items:center;"
                 onclick="hostOfflineQR()" data-t="share_offline">
-                <span class="material-icons-round">qr_code_2</span> Share Offline
+                <span class="material-icons-round">qr_code_2</span> Share
             </button>
             <button id="onlineShareBtn" class="btn btn-text" style="display: none;" onclick="hostOnlineShare()"
                 data-t="share_online">
@@ -851,12 +881,15 @@
                 <div id="qrScannerStatus" style="font-size:12px; opacity:0.7;" data-t="waiting_for_camera">Waiting for
                     camera...</div>
             </div>
-            <div class="modal-actions" style="justify-content: space-between !important; display: flex !important; width: 100%;">
-                <button class="btn btn-text" onclick="switchCamera()" style="gap:8px; display:inline-flex !important; padding: 0 16px; z-index: 1001; position: relative;">
+            <div class="modal-actions"
+                style="justify-content: space-between !important; display: flex !important; width: 100%;">
+                <button class="btn btn-text" onclick="switchCamera()"
+                    style="gap:8px; display:inline-flex !important; padding: 0 16px; z-index: 1001; position: relative;">
                     <span class="material-icons-round">flip_camera_ios</span>
                     <span data-t="switch_camera">Switch Camera</span>
                 </button>
-                <button class="btn btn-text no-shade" onclick="closeQRScanner()" data-t="cancel" style="padding: 0 16px; z-index: 1001; position: relative;">Cancel</button>
+                <button class="btn btn-text no-shade" onclick="closeQRScanner()" data-t="cancel"
+                    style="padding: 0 16px; z-index: 1001; position: relative;">Cancel</button>
             </div>
         </div>
     </div>
@@ -931,7 +964,8 @@
                 <div style="display: flex; flex-direction: column; gap: 12px;">
                     <button class="btn btn-filled" onclick="document.getElementById('avatarInput').click()"
                         data-t="upload_photo">Upload Photo</button>
-                    <button class="btn btn-text" id="useTemplateBtn" onclick="showAvatarTemplates()" data-t="use_template" style="display: block;">Use
+                    <button class="btn btn-text" id="useTemplateBtn" onclick="showAvatarTemplates()"
+                        data-t="use_template" style="display: block;">Use
                         Template</button>
                     <button class="btn btn-text" onclick="resetAvatar()" data-t="reset_to_letter">Reset to
                         Letter</button>
@@ -986,8 +1020,11 @@
         <div class="modal">
             <div class="modal-title" data-t="sharing_qr">Sharing through QR</div>
             <div class="modal-content">
-                <div id="qrSerialDisplay" style="display:flex; justify-content:center; margin-bottom:16px; min-height: 250px; align-items: center;"></div>
-                <div id="qrSerialProgress" style="text-align:center; font-family:var(--font-main); font-weight:500; font-size:14px;">
+                <div id="qrSerialDisplay"
+                    style="display:flex; justify-content:center; margin-bottom:16px; min-height: 250px; align-items: center;">
+                </div>
+                <div id="qrSerialProgress"
+                    style="text-align:center; font-family:var(--font-main); font-weight:500; font-size:14px;">
                     Block 0 / 0
                 </div>
                 <div class="progress-container" style="margin-top:12px;">
@@ -999,9 +1036,15 @@
             </div>
             <div class="modal-actions" style="display:flex; justify-content:space-between; align-items:center;">
                 <div style="display:flex; gap:8px;">
-                    <button class="btn btn-icon" style="width:40px; height:40px; background-color:var(--md-sys-color-secondary-container); color:var(--md-sys-color-on-secondary-container); border-radius:12px; display:flex; align-items:center; justify-content:center;" onclick="prevSerialQR()"><span class="material-icons-round">chevron_left</span></button>
-                    <button class="btn btn-icon" id="qrAutoPlayBtn" style="width:40px; height:40px; background-color:var(--md-sys-color-primary-container); color:var(--md-sys-color-on-primary-container); border-radius:12px; display:flex; align-items:center; justify-content:center;" onclick="toggleQRAutoPlay()"><span class="material-icons-round">play_arrow</span></button>
-                    <button class="btn btn-icon" style="width:40px; height:40px; background-color:var(--md-sys-color-secondary-container); color:var(--md-sys-color-on-secondary-container); border-radius:12px; display:flex; align-items:center; justify-content:center;" onclick="nextSerialQR()"><span class="material-icons-round">chevron_right</span></button>
+                    <button class="btn btn-icon"
+                        style="width:40px; height:40px; background-color:var(--md-sys-color-secondary-container); color:var(--md-sys-color-on-secondary-container); border-radius:12px; display:flex; align-items:center; justify-content:center;"
+                        onclick="prevSerialQR()"><span class="material-icons-round">chevron_left</span></button>
+                    <button class="btn btn-icon" id="qrAutoPlayBtn"
+                        style="width:40px; height:40px; background-color:var(--md-sys-color-primary-container); color:var(--md-sys-color-on-primary-container); border-radius:12px; display:flex; align-items:center; justify-content:center;"
+                        onclick="toggleQRAutoPlay()"><span class="material-icons-round">play_arrow</span></button>
+                    <button class="btn btn-icon"
+                        style="width:40px; height:40px; background-color:var(--md-sys-color-secondary-container); color:var(--md-sys-color-on-secondary-container); border-radius:12px; display:flex; align-items:center; justify-content:center;"
+                        onclick="nextSerialQR()"><span class="material-icons-round">chevron_right</span></button>
                 </div>
                 <button class="btn btn-text" onclick="closeQRSerialOverlay()" data-t="close">Close</button>
             </div>
@@ -1013,10 +1056,16 @@
         <div class="modal">
             <div class="modal-title" data-t="receive_qr">Receive via QR</div>
             <div class="modal-content">
-                <div id="qrSerialReader" style="width:100%; max-width:300px; min-height:250px; background-color:#000; border-radius:12px; overflow:hidden; margin:0 auto 16px;"></div>
-                <div id="qrSerialScannerStatus" style="font-size:14px; color:var(--md-sys-color-primary); text-align:center; margin-bottom:8px;"></div>
-                
-                <div id="qrSerialReceiveFilename" style="font-weight:bold; text-align:center; margin-bottom:8px; word-break: break-all;">Waiting for first QR...</div>
+                <div id="qrSerialReader"
+                    style="width:100%; max-width:300px; min-height:250px; background-color:#000; border-radius:12px; overflow:hidden; margin:0 auto 16px;">
+                </div>
+                <div id="qrSerialScannerStatus"
+                    style="font-size:14px; color:var(--md-sys-color-primary); text-align:center; margin-bottom:8px;">
+                </div>
+
+                <div id="qrSerialReceiveFilename"
+                    style="font-weight:bold; text-align:center; margin-bottom:8px; word-break: break-all;">Waiting for
+                    first QR...</div>
                 <div id="qrSerialReceiveProgress" style="text-align:center; font-size:14px;">Block 0 / ?</div>
                 <div class="progress-container" style="margin-top:12px;">
                     <div class="progress-bar" id="qrSerialReceiveProgressBar" style="width: 0%;"></div>
@@ -1122,7 +1171,7 @@
         const TRANSLATIONS = {
             en: {
                 hero_title: 'Send Files Instantly.',
-                hero_subtitle: 'Secure, fast peer-to-peer sharing.',
+                hero_subtitle: 'Secure, fast, serverless peer-to-peer sharing.',
                 nearby_devices: 'Nearby Devices',
                 scanning: 'Scanning...',
                 no_peers: 'No one nearby yet. Share the link with someone on your network!',
@@ -1167,7 +1216,7 @@
                 qr_help: 'Ask the receiver to scan this code or open the link.',
                 copy_link: 'Copy as Link',
                 scan_answer: 'Scan Answer',
-                share_offline: 'Share Offline',
+                share_offline: 'Share',
                 share_online: 'Share Online',
                 scanner_active: 'Scanner active.',
                 qr_display_status: 'Ask the receiver to scan this code or open the link.\n\nA prompt will appear when they join.',
@@ -1188,7 +1237,7 @@
             },
             vi: {
                 hero_title: 'Gửi tệp ngay lập tức.',
-                hero_subtitle: 'Bảo mật, nhanh chóng và chia sẻ ngang hàng.',
+                hero_subtitle: 'Bảo mật, nhanh chóng, chia sẻ ngang hàng không máy chủ.',
                 nearby_devices: 'Thiết bị lân cận',
                 scanning: 'Đang tìm kiếm...',
                 no_peers: 'Chưa thấy ai lân cận. Hãy chia sẻ liên kết với mọi người!',
@@ -1234,7 +1283,7 @@
                 qr_help: 'Yêu cầu người nhận quét mã này hoặc mở liên kết.',
                 copy_link: 'Sao chép liên kết',
                 scan_answer: 'Quét câu trả lời',
-                share_offline: 'Chia sẻ Ngoại tuyến',
+                share_offline: 'Chia sẻ',
                 share_online: 'Chia sẻ Trực tuyến',
                 scanner_active: 'Máy quét đang hoạt động.',
                 qr_display_status: 'Yêu cầu người nhận quét mã này hoặc mở liên kết.\n\nThông báo sẽ xuất hiện khi họ tham gia.',
@@ -1252,6 +1301,72 @@
                 sharing_qr: 'Đang chia sẻ qua QR',
                 receive_qr: 'Nhận qua QR',
                 qr_send_tutorial: 'Vui lòng yêu cầu người nhận chọn "Nhận qua QR" và hướng máy ảnh vào màn hình của bạn trước khi nhấn OK để bắt đầu.'
+            },
+            ru: {
+                hero_title: 'Мгновенная отправка файлов.',
+                hero_subtitle: 'Безопасный, быстрый, без серверный peer-to-peer обмен.',
+                nearby_devices: 'Устройства рядом',
+                scanning: 'Поиск...',
+                no_peers: 'Никого нет рядом. Поделитесь ссылкой с кем-нибудь в вашей сети!',
+                incoming_file: 'Входящий файл',
+                accept: 'Принять',
+                decline: 'Отклонить',
+                start_transfer: 'Начать передачу',
+                cancel: 'Отмена',
+                connecting: 'Соединение...',
+                requesting: 'Запрос разрешения...',
+                accepted_wait: 'Принято! Оба должны нажать Начать.',
+                waiting_other: 'Ожидание другой стороны...',
+                sending: 'Отправка...',
+                receiving: 'Получение...',
+                sent_success: 'Отправлено успешно!',
+                received_success: 'Получено успешно!',
+                link_copied: 'Ссылка скопирована! Поделитесь ею с получателем.',
+                error_connection: 'Ошибка соединения',
+                error_link: 'Ссылка истекла или отправитель оффлайн.',
+                choose_accent: 'Выбрать основной цвет',
+                edit_name_prompt: 'Введите имя вашего устройства:',
+                initializing: 'Инициализация...',
+                wants_to_send: 'хочет отправить вам',
+                waiting_for: 'Ожидание',
+                ready_to_send: 'Готов к отправке',
+                ready_to_receive: 'Готов к получению',
+                initial_prompt: 'Пожалуйста, сначала выберите файл с помощью кнопки +.',
+                scan_qr: 'Сканировать QR',
+                upload_type: 'Выберите тип загрузки',
+                files: 'Файлы',
+                folder: 'Папка',
+                cancelled: 'Передача отменена другой стороной.',
+                cancel: 'Отмена',
+                theme_auto: 'Авто',
+                theme_light: 'Светлая',
+                theme_dark: 'Темная',
+                choose_avatar: 'Настройки аватара',
+                upload_photo: 'Загрузить фото',
+                use_template: 'Использовать шаблон',
+                reset_to_letter: 'Сбросить до буквы',
+                waiting_for_camera: 'Ожидание камеры...',
+                qr_help: 'Попросите получателя отсканировать этот код или открыть ссылку.',
+                copy_link: 'Копировать ссылку',
+                scan_answer: 'Сканировать ответ',
+                share_offline: 'Поделиться',
+                share_online: 'Поделиться онлайн',
+                scanner_active: 'Сканер активен.',
+                qr_display_status: 'Попросите получателя отсканировать этот код или открыть ссылку.\n\nУведомление появится, когда он присоединится.',
+                starting_camera: 'Запуск камеры...',
+                close: 'Закрыть',
+                qr_offline_help: 'Попросите получателя нажать на иконку Сканера и отсканировать этот код.\n\nЗатем нажмите "Сканировать ответ" ниже, чтобы отсканировать код, который они сгенерируют.',
+                hosting_offline: 'Раздача оффлайн...',
+                mqtt_error: 'Не удается подключиться к серверу MQTT. Функция поиска устройств рядом не будет работать.',
+                hosting_online: 'Раздача онлайн...',
+                answer_generated: 'Ответ сгенерирован',
+                qr_answer_help: 'Попросите Хоста отсканировать этот ответ соединения.',
+                switch_camera: 'Переключить камеру',
+                invalid_qr: 'Ошибка соединения. QR предназначен только для настройки, файлы будут передаваться через локальный WiFi.',
+                share_qr: 'Поделиться через QR',
+                sharing_qr: 'Обмен через QR',
+                receive_qr: 'Получить через QR',
+                qr_send_tutorial: 'Пожалуйста, попросите получателя выбрать "Получить через QR" и направить камеру на ваш экран перед тем, как нажать ОК для запуска.'
             }
         };
 
@@ -1276,9 +1391,18 @@
             }
         }
 
-        let currentLang = getSetting('baidrop-lang') || 'en';
+        let currentLangPref = getSetting('baidrop-lang') || 'auto';
         let currentTheme = getSetting('baidrop-theme') || 'auto';
         let currentAccent = getSetting('baidrop-accent') || '#f57c00';
+
+        function getDeviceLang() {
+            const navLang = navigator.language || navigator.userLanguage || 'en';
+            if (navLang.startsWith('vi')) return 'vi';
+            if (navLang.startsWith('ru')) return 'ru';
+            return 'en';
+        }
+
+        let currentLang = currentLangPref === 'auto' ? getDeviceLang() : currentLangPref;
 
         // STATE
         let myPeer = null;
@@ -1320,15 +1444,8 @@
         function t(key) { return TRANSLATIONS[currentLang][key] || key; }
 
         async function fetchIpAndInit() {
-            try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 second timeout
-                const res = await fetch('https://api.ipify.org?format=json', { signal: controller.signal });
-                clearTimeout(timeoutId);
-                const data = await res.json();
-                myIpHash = btoa(data.ip).substring(0, 8).replace(/[+/=]/g, '');
-                console.log('Network Hash:', myIpHash);
-            } catch (e) { console.warn("IP fetch failed or timed out", e); }
+            // Server now handles IP-based discovery via public IP detection
+            myIpHash = 'global';
             initPeer();
             initVercelDiscovery();
         }
@@ -1392,7 +1509,10 @@
             });
 
             const lb = document.getElementById('langBtn');
-            if (lb) lb.innerText = currentLang.toUpperCase();
+            if (lb) {
+                if (currentLangPref === 'auto') lb.innerText = 'AUTO';
+                else lb.innerText = currentLangPref.toUpperCase();
+            }
             if (myNameEl()) myNameEl().innerText = myName;
 
             const av = myAvatarEl();
@@ -1402,13 +1522,18 @@
                 if (isIcon) av.classList.add('material-icons-round');
                 else av.classList.remove('material-icons-round');
             }
-            
+
             if (myIdEl()) myIdEl().innerText = (myId || t('initializing'));
         }
 
         function toggleLanguage() {
-            currentLang = currentLang === 'en' ? 'vi' : 'en';
-            saveSetting('baidrop-lang', currentLang);
+            if (currentLangPref === 'auto') currentLangPref = 'en';
+            else if (currentLangPref === 'en') currentLangPref = 'vi';
+            else if (currentLangPref === 'vi') currentLangPref = 'ru';
+            else currentLangPref = 'auto';
+
+            saveSetting('baidrop-lang', currentLangPref);
+            currentLang = currentLangPref === 'auto' ? getDeviceLang() : currentLangPref;
             updateUI();
             renderPeers();
         }
@@ -1441,6 +1566,11 @@
             currentAccent = color;
             saveSetting('baidrop-accent', color);
             document.documentElement.style.setProperty('--md-sys-color-primary', color);
+
+            // Update Favicon based on theme color
+            const faviconSvg = `<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="${color}"><path d="M409-149q-29-29-29-71t29-71q29-29 71-29t71 29q29 29 29 71t-29 71q-29 29-71 29t-71-29ZM254-346l-84-86q59-59 138.5-93.5T480-560q92 0 171.5 35T790-430l-84 84q-44-44-102-69t-124-25q-66 0-124 25t-102 69ZM84-516 0-600q92-94 215-147t265-53q142 0 265 53t215 147l-84 84q-77-77-178.5-120.5T480-680q-116 0-217.5 43.5T84-516Z"/></svg>`;
+            const faviconDataUri = `data:image/svg+xml,${encodeURIComponent(faviconSvg)}`;
+            document.getElementById('favicon').href = faviconDataUri;
 
             // Adjust contrast: if color is very light, use dark text on it
             // Simple luma calculation
@@ -1478,8 +1608,8 @@
         }
 
         function generateFriendlyName() {
-            const adjectives = ['Happy', 'Swift', 'Bright', 'Golden', 'Cool', 'Silent', 'Lunar', 'Super'];
-            const animals = ['Panda', 'Eagle', 'Fox', 'Dolphin', 'Tiger', 'Koala', 'Falcon', 'Owl'];
+            const adjectives = ['Happy', 'Swift', 'Bright', 'Golden', 'Cool', 'Silent', 'Lunar', 'Super', 'Trần', 'Nguyễn', 'Diệp', 'Phương', 'Hà'];
+            const animals = ['Panda', 'Eagle', 'Fox', 'Dolphin', 'Tiger', 'Koala', 'Falcon', 'Owl', 'Linh', 'Vy', 'Thành', 'Minh', 'Nguyên'];
             return adjectives[Math.floor(Math.random() * adjectives.length)] + ' ' +
                 animals[Math.floor(Math.random() * animals.length)];
         }
@@ -1641,7 +1771,7 @@
 
         async function pollVercel() {
             if (document.visibilityState === 'hidden') return;
-            
+
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 2000);
 
@@ -2482,7 +2612,7 @@
             const ufrag = sdp.match(/a=ice-ufrag:(.+)/)?.[1]?.trim();
             const pwd = sdp.match(/a=ice-pwd:(.+)/)?.[1]?.trim();
             const fingerprint = sdp.match(/a=fingerprint:sha-256 (.+)/)?.[1]?.trim();
-            
+
             // Candidate line: a=candidate:[foundation] [comp] [proto] [priority] [ip] [port] typ host ...
             const candMatches = [...sdp.matchAll(/a=candidate:\S+ \d+ \S+ \d+ (\S+) (\d+) typ host/gi)];
             let ip = '127.0.0.1';
@@ -2491,7 +2621,7 @@
                 ip = candMatches[0][1];
                 port = candMatches[0][2];
             }
-            
+
             if (!ufrag || !pwd || !fingerprint) return null;
             // Format: ufrag|pwd|fingerprint|ip|port
             return `${ufrag}|${pwd}|${fingerprint}|${ip}|${port}`;
@@ -2502,7 +2632,7 @@
             if (parts.length < 5) return null;
             const [ufrag, pwd, fingerprint, ip, port] = parts;
             const setup = type === 'offer' ? 'actpass' : 'active';
-            
+
             // Minimal valid SDP template for DataChannel
             const sdp = [
                 'v=0',
@@ -2521,7 +2651,7 @@
                 `a=candidate:0 1 UDP 2122260223 ${ip} ${port} typ host`,
                 ''
             ].join('\r\n');
-            
+
             return { type, sdp };
         }
 
@@ -2609,7 +2739,7 @@
             }
         }
 
-        let startScannerWithFacingMode = null; 
+        let startScannerWithFacingMode = null;
 
         function scanOfflineQR() {
             updateUI();
@@ -2626,7 +2756,7 @@
 
                 qrScannerInstance.start(
                     facingModeOpt,
-                    { fps: 15, formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ] },
+                    { fps: 15, formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE] },
                     async (decodedText) => {
                         document.getElementById('qrScannerStatus').innerText = 'Code scanned, processing...';
                         if (decodedText.startsWith('QS:')) {
@@ -2640,8 +2770,8 @@
                     document.getElementById('qrScannerStatus').innerText = t('scanner_active');
                 }).catch(err => {
                     if (facingModeOpt.facingMode === "environment") {
-                        try { qrScannerInstance.clear(); } catch (e) { } 
-                        qrScannerInstance = new Html5Qrcode("qrReader"); 
+                        try { qrScannerInstance.clear(); } catch (e) { }
+                        qrScannerInstance = new Html5Qrcode("qrReader");
                         startScannerWithFacingMode("user");
                     } else {
                         document.getElementById('qrScannerStatus').innerText = 'Camera fail: ' + (err.message || err);
@@ -2678,7 +2808,7 @@
 
                 qrSerialScannerInstance.start(
                     facingModeOpt,
-                    { fps: 15, formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ] },
+                    { fps: 15, formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE] },
                     async (decodedText) => {
                         let res = await handleSerialQRScanned(decodedText);
                         if (!res) {
@@ -2874,7 +3004,7 @@
                         sdpString = resData.sdp;
                     }
                     if (!sdpString) throw new Error('Legacy QR requires internet');
-                    
+
                     const offerDesc = JSON.parse(sdpString);
                     offlinePeerConnection = new RTCPeerConnection({ iceServers: [] });
                     const dataChannel = offlinePeerConnection.createDataChannel('baidrop-offline-channel', { negotiated: true, id: 0 });
@@ -2966,7 +3096,7 @@
                         if (data.receiver && !this.receiverSeen) {
                             this.receiverSeen = true;
 
-                                const avatarHtml = getAvatarHTML(data.receiver.avatar, data.receiver.name, 'small-avatar');
+                            const avatarHtml = getAvatarHTML(data.receiver.avatar, data.receiver.name, 'small-avatar');
 
                             closeQRDisplay();
 
@@ -2990,7 +3120,7 @@
                         if (data.chunkAck && data.status === 'transferring' && this.lastChunkIndexAcked !== this.currentChunkIndex) {
                             this.lastChunkIndexAcked = this.currentChunkIndex;
                             // Acknowledge chunk
-                            nextDelay = 50; 
+                            nextDelay = 50;
                             this.emit('data', { type: 'next-chunk' });
                         }
 
@@ -3267,16 +3397,16 @@
             try {
                 const compressed = await compressFile(file);
                 const base64 = uint8ArrayToBase64(compressed);
-                const chunkSize = 200; 
+                const chunkSize = 200;
                 qrSerialChunks = [];
                 const total = Math.ceil(base64.length / chunkSize);
                 const filename = encodeURIComponent(file.name);
-                
+
                 for (let i = 0; i < total; i++) {
                     const data = base64.substring(i * chunkSize, (i + 1) * chunkSize);
                     qrSerialChunks.push(`QS:${filename}:${total}:${i}:${data}`);
                 }
-                
+
                 qrSerialIndex = 0;
                 qrSerialAutoPlay = false;
 
@@ -3352,11 +3482,11 @@
         async function handleSerialQRScanned(content) {
             content = content.trim();
             if (!content.startsWith('QS:')) return false;
-            
+
             const filenameRegex = /^QS:([^:]+):(\d+):(\d+):([\s\S]*)$/;
             const match = content.match(filenameRegex);
             if (!match) return false;
-            
+
             const filename = decodeURIComponent(match[1]);
             const total = parseInt(match[2]);
             const index = parseInt(match[3]);
@@ -3376,7 +3506,7 @@
             if (!qrReceiveData.chunks.has(index)) {
                 qrReceiveData.chunks.set(index, data);
                 updateQRReceiveProgress();
-                
+
                 if (qrReceiveData.chunks.size === qrReceiveData.total) {
                     await completeQRReceive();
                 }
@@ -3394,16 +3524,16 @@
         async function completeQRReceive() {
             const { filename, total, chunks } = qrReceiveData;
             qrReceiveData.active = false;
-            
+
             // Reassemble
             let fullBase64 = '';
             for (let i = 0; i < total; i++) {
                 fullBase64 += chunks.get(i);
             }
-            
+
             const compressed = base64ToUint8Array(fullBase64);
             const decompressed = await decompressData(compressed);
-            
+
             const blob = new Blob([decompressed]);
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');

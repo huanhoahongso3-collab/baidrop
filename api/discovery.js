@@ -1,5 +1,14 @@
+import crypto from 'crypto';
+
 const peers = new Map();
 const TIMEOUT_MS = 15000; // 15 seconds
+
+function getIpHash(req) {
+    const forwarded = req.headers['x-forwarded-for'];
+    const ip = forwarded ? forwarded.split(/\s*,\s*/)[0] : req.socket.remoteAddress;
+    // Use md5 for a short, consistent hash of the public IP
+    return crypto.createHash('md5').update(ip || 'unknown').digest('hex').substring(0, 8);
+}
 
 export default function handler(req, res) {
     // CORS Headers for allowing local testing
@@ -26,7 +35,8 @@ export default function handler(req, res) {
             try { body = JSON.parse(body); } catch(e){}
         }
 
-        const { id, name, avatar, ipHash, hostHash, action } = body || {};
+        const { id, name, avatar, hostHash, action } = body || {};
+        const ipHash = getIpHash(req);
 
         if (!id) {
             return res.status(400).json({ error: 'Missing required fields' });
@@ -35,10 +45,6 @@ export default function handler(req, res) {
         if (action === 'remove') {
             peers.delete(id);
             return res.status(200).json({ success: true });
-        }
-
-        if (!ipHash) {
-            return res.status(400).json({ error: 'Missing ipHash' });
         }
 
         const now = Date.now();
@@ -63,7 +69,7 @@ export default function handler(req, res) {
         const nearbyPeers = [];
         for (const [peerId, peerData] of peers.entries()) {
             if (peerId !== id) {
-                if (ipHash && peerData.ipHash === ipHash) {
+                if (peerData.ipHash === ipHash) {
                     nearbyPeers.push({
                         id: peerData.id,
                         name: peerData.name,
